@@ -361,7 +361,7 @@ export default function App() {
         history.push({
           label: `Move widget to ${target.name}`,
           undo: () => onPage(fromId, () => api.updateWidget(widget.id, before)),
-          redo: () => onPage(fromId, () => api.updateWidget(widget.id, after)),
+          redo: () => onPage(targetId, () => api.updateWidget(widget.id, after)),
         });
         setSelectedId(null);
       }
