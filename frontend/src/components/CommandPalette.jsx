@@ -24,7 +24,7 @@ export default function CommandPalette({ services, dashboards, links, health, se
 
   const fallback = () => {
     if (!q.trim()) return;
-    window.location.href = queryTarget(q, settings.search_url);
+    openUrl(queryTarget(q, settings.search_url), settings.open_new_tab);
     onClose();
   };
 

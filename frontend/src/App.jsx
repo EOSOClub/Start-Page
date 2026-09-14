@@ -443,7 +443,7 @@ export default function App() {
   const deleteDashboard = () =>
     run(async () => {
       const detail = dashboard; // includes its widgets, so the whole page can be restored
-      const index = dashboards.findIndex((d) => d.id === detail.id);
+      const fallbackId = dashboards[Math.max(0, dashboards.findIndex((d) => d.id === detail.id) - 1)]?.id ?? null;
       await api.deleteDashboard(detail.id);
       const restore = async () => {
         await api.importConfig({ services: [], integrations: [], settings: {}, dashboards: [detail] }, false);
@@ -457,13 +457,13 @@ export default function App() {
           await api.deleteDashboard(detail.id);
           const list = await api.listDashboards();
           setDashboards(list);
-          setCurrentId(list[Math.max(0, index - 1)]?.id ?? null);
+          setCurrentId(list.some((d) => d.id === fallbackId) ? fallbackId : list[0]?.id ?? null);
         },
       });
       setModal(null);
       const list = await api.listDashboards();
       setDashboards(list);
-      setCurrentId(list[Math.max(0, index - 1)]?.id ?? null);
+      setCurrentId(list.some((d) => d.id === fallbackId) ? fallbackId : list[0]?.id ?? null);
       setToast({ text: `Page "${detail.name}" deleted`, actionLabel: "Undo", action: doUndo });
     });
 

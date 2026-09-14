@@ -280,28 +280,37 @@ const ImageWidget = {
   },
 };
 
-// ---------- Clock ----------
+// ---------- Clock / World Clock ----------
 const ClockWidget = {
   label: "Clock",
   size: { w: 4, h: 2 },
   fields: [
+    { key: "timezone", label: "Timezone", type: "text", placeholder: "(local)", help: 'IANA timezone name, e.g. America/New_York or Europe/London. Abbreviations like EST/PST are not valid. Empty = your local time.' },
+    { key: "showSeconds", label: "Show seconds", type: "checkbox" },
     { key: "h24", label: "24-hour", type: "checkbox" },
     { key: "showDate", label: "Show date", type: "checkbox" },
     { key: "label", label: "Label", type: "text" },
     TRANSPARENT_FIELD,
   ],
   Render: ({ widget }) => {
-    const now = useNow();
     const c = widget.config;
+    const now = useNow(c.showSeconds);
+    let tz;
+    if (c.timezone) {
+      try { now.toLocaleTimeString("en", { timeZone: c.timezone }); tz = c.timezone; }
+      catch { tz = undefined; }
+    }
+    const opts = { hour: "2-digit", minute: "2-digit", hour12: !c.h24 };
+    if (c.showSeconds) opts.second = "2-digit";
     return (
       <div className="clock">
         {c.label && <div className="tile-sub">{c.label}</div>}
         <div className="clock-time">
-          {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: !c.h24 })}
+          {now.toLocaleTimeString([], { ...opts, timeZone: tz })}
         </div>
         {c.showDate && (
           <div className="tile-sub">
-            {now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+            {now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz })}
           </div>
         )}
       </div>

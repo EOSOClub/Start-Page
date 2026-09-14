@@ -96,9 +96,9 @@ export const DockerWidget = {
         )}
         {c.compact && (
           <div className="stats">
-            <div><b>{d.running}</b><span>running</span></div>
-            <div><b>{d.stopped}</b><span>stopped</span></div>
-            <div><b>{d.total}</b><span>total</span></div>
+            <div><b>{running}</b><span>running</span></div>
+            <div><b>{rows.length - running}</b><span>not running</span></div>
+            <div><b>{rows.length}</b><span>total</span></div>
           </div>
         )}
       </div>
