@@ -135,8 +135,8 @@ export default function IntegrationManager({ integrations, integrationData, onCh
     >
       {integrations.length === 0 && (
         <p className="muted">
-          Integrations are data sources the backend polls — Docker, Uptime Kuma status pages, or any JSON endpoint. Widgets like
-          “Docker”, “Uptime Kuma” and “Custom status” read from them.
+          Integrations are data sources the backend polls — Docker, Uptime Kuma status pages, JSON endpoints, RSS/Atom feeds, or system stats. Widgets like
+          “Docker”, “Uptime Kuma”, “Custom status (JSON)”, “RSS / Atom” and “System stats” read from them.
         </p>
       )}
       <table className="svc-table">
