@@ -19,6 +19,8 @@ export const nudgeStep = (dashboard) => 1 / (SNAP_DIV[gridOptions(dashboard).sna
 /** Below this canvas width, view mode stacks widgets instead of squeezing the grid. */
 const NARROW_PX = 720;
 const STACK_COLS = 4;
+/** Max rows a stacked card may claim in view mode; taller widgets scroll inside the card. */
+const STACK_MAX_ROWS = 4;
 
 export function gridOptions(dashboard) {
   const s = dashboard.settings || {};
@@ -255,7 +257,7 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
             <div
               key={w.id}
               className="widget-cell"
-              style={{ gridColumn: `span ${half ? STACK_COLS / 2 : STACK_COLS}`, height: Math.max(rowPitch, Math.round(w.h * rowPitch)) }}
+              style={{ gridColumn: `span ${half ? STACK_COLS / 2 : STACK_COLS}`, height: Math.min(Math.max(rowPitch, Math.round(w.h * rowPitch)), STACK_MAX_ROWS * rowPitch) }}
             >
               {renderWidget(w)}
             </div>
