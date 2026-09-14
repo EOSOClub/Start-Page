@@ -210,8 +210,8 @@ export default function App() {
 
   /** Run a history step on the page it belongs to, so undo never changes a page you can't see. */
   const onPage = async (dashId, fn) => {
-    if (dashId && currentIdRef.current !== dashId) setCurrentId(dashId);
     await fn();
+    if (dashId && currentIdRef.current !== dashId) setCurrentId(dashId);
     await refreshPages();
   };
 
