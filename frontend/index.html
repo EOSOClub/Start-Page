@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Start Page</title>
+    <script>
+      // Apply the cached theme before the app loads so a new tab doesn't flash the wrong colours.
+      try {
+        var s = (JSON.parse(localStorage.getItem("sp.cache.v1")) || {}).settings;
+        if (s) {
+          var r = document.documentElement;
+          r.dataset.theme = s.theme || "system";
+          if (s.accent) r.style.setProperty("--accent", s.accent);
+          if (s.background_color) r.style.setProperty("--bg", s.background_color);
+          if (s.title) document.title = s.title;
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+backend/data/
+backend/static/
+__pycache__/
+*.pyc
+.venv/
+.idea/
+data/

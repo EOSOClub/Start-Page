@@ -1,0 +1,11 @@
+services:
+  startpage:
+    build: .
+    container_name: startpage
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      # Optional: lets a Docker integration with url "unix:///var/run/docker.sock" see this host
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
