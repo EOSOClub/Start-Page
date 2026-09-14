@@ -6,8 +6,10 @@ Provider types and their `config`:
   uptime_kuma {"url": "http://kuma:3001", "slug": "status-page-slug"}
   json        {"url": "...", "headers": {...}, "method": "GET"}
   host        {} (no config needed — reads the local machine via psutil)
+  rss         {"url": "https://example.com/feed.xml"} — RSS/Atom feed (feedparser, lazy import)
 """
 import asyncio
+import calendar
 import logging
 import os
 import socket
@@ -25,7 +27,7 @@ _data: dict[str, dict] = {}
 _next: dict[str, float] = {}
 _task: asyncio.Task | None = None
 
-TYPES = ["docker", "uptime_kuma", "json", "host"]
+TYPES = ["docker", "uptime_kuma", "json", "host", "rss"]
 
 
 def get_all() -> dict[str, dict]:
@@ -151,7 +153,29 @@ async def _fetch_system(cfg):
     return await asyncio.to_thread(_read_system, psutil)
 
 
-FETCHERS = {"docker": _fetch_docker, "uptime_kuma": _fetch_uptime_kuma, "json": _fetch_json, "host": _fetch_system}
+# ---------------- RSS / Atom ----------------
+async def _fetch_rss(cfg: dict) -> Any:
+    async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
+        resp = await client.get(cfg["url"], follow_redirects=True)
+        resp.raise_for_status()
+    import feedparser  # lazy: missing dep = error tile, not backend outage
+    # Parsing is CPU-bound and unbounded in time, so it must not run on the event loop
+    # (ADR 006). The 5 MB cap keeps a huge or entity-amplified feed proportionate.
+    parsed = await asyncio.to_thread(feedparser.parse, resp.content[:5_000_000])
+    entries = []
+    for e in parsed.entries[:30]:
+        when = e.get("published_parsed")
+        entries.append({
+            "title": e.get("title", ""),
+            "link": e.get("link", ""),
+            # feedparser parses dates as UTC; epoch seconds keep it JSON-safe (struct_time is not).
+            "published_parsed": calendar.timegm(when) if when else None,
+            "summary": (e.get("summary") or "")[:500],
+        })
+    return {"title": parsed.feed.get("title", ""), "entries": entries}
+
+
+FETCHERS = {"docker": _fetch_docker, "uptime_kuma": _fetch_uptime_kuma, "json": _fetch_json, "host": _fetch_system, "rss": _fetch_rss}
 
 
 async def fetch(integration: models.Integration) -> dict:

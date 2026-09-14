@@ -1,6 +1,8 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import Icon from "./Icon.jsx";
 import { api } from "../api.js";
+import { TRANSPARENT_FIELD } from "./startpage.jsx";
 
 /* Widgets backed by Integrations (Docker, Uptime Kuma, JSON) and service dependencies. */
 
@@ -232,6 +234,55 @@ export const SystemWidget = {
           <div><b>{d.cpu_percent != null ? `${d.cpu_percent.toFixed(1)}%` : "—"}</b><span>CPU</span></div>
           <div><b>{d.mem_used != null ? `${fmtBytes(d.mem_used)} / ${fmtBytes(d.mem_total)}` : "—"}</b><span>RAM</span></div>
           <div><b>{d.disk_used != null ? `${fmtBytes(d.disk_used)} / ${fmtBytes(d.disk_total)}` : "—"}</b><span>Disk</span></div>
+        </div>
+      </div>
+    );
+  },
+};
+
+// ---------- RSS / Atom ----------
+const RSS_LINK = /^https?:/i; // only these may become <a href> — anything else renders as plain text
+
+export const RssWidget = {
+  label: "RSS / Atom",
+  size: { w: 6, h: 5 },
+  fields: [
+    { key: "integration_id", label: "RSS/Atom integration", type: "integration", integrationType: "rss" },
+    { key: "title", label: "Title", type: "text", placeholder: "(feed title)" },
+    { key: "max_items", label: "Max items", type: "number", default: 10 },
+    { key: "show_description", label: "Show description", type: "checkbox" },
+    { key: "newTab", label: "Open links in new tab", type: "checkbox" },
+    TRANSPARENT_FIELD,
+  ],
+  Render: ({ widget, integrations, integrationData }) => {
+    const { integ, data } = useIntegration(widget, integrations, integrationData, "rss");
+    const c = widget.config;
+    const problem = <Problem integ={integ} data={data} type="RSS" />;
+    if (!integ || !data || (!data.ok && !data.data)) return problem;
+    const d = data.data;
+    const entries = (d.entries || []).slice(0, Math.max(1, c.max_items ?? 10));
+    return (
+      <div className="group">
+        <Header title={c.title || d.title || integ.name} right={!data.ok ? <span className="muted">stale</span> : null} />
+        <div className="scroll">
+          {entries.length === 0 && <div className="muted">No items yet.</div>}
+          {entries.map((e, i) => (
+            <div key={e.link || i}>
+              <div className="kuma-row">
+                {RSS_LINK.test(e.link || "") ? (
+                  <a className="kuma-name" href={e.link} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false}>
+                    {e.title || "(untitled)"}
+                  </a>
+                ) : (
+                  <span className="kuma-name">{e.title || "(untitled)"}</span>
+                )}
+                <span className="muted nowrap">{e.published_parsed != null ? new Date(e.published_parsed * 1000).toLocaleDateString() : ""}</span>
+              </div>
+              {c.show_description && e.summary && (
+                <div className="muted" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(e.summary) }} />
+              )}
+            </div>
+          ))}
         </div>
       </div>
     );

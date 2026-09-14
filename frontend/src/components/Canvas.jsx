@@ -14,7 +14,13 @@ export const SNAP_MODES = [
 const SNAP_DIV = { cell: 1, half: 2, quarter: 4 };
 
 /** Distance (in cells) an arrow-key nudge moves a widget in each snap mode. */
-export const nudgeStep = (dashboard) => 1 / (SNAP_DIV[gridOptions(dashboard).snap] || 4);
+export const nudgeStep = (dashboard) => {
+  const o = gridOptions(dashboard);
+  // "free" has no SNAP_DIV entry; resolve it like the render grid does (K ≈ 1 sub-cell per px),
+  // so the arrow keys move exactly 1px while cell/half/quarter keep their grid-unit steps.
+  if (o.snap === "free") return 1 / Math.max(1, Math.round(o.rowHeight + o.gap));
+  return 1 / (SNAP_DIV[o.snap] || 4);
+};
 
 /** Below this canvas width, view mode stacks widgets instead of squeezing the grid. */
 const NARROW_PX = 720;

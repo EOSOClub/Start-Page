@@ -24,9 +24,12 @@ const TYPE_FIELDS = {
     { key: "headers_text", label: "Headers (one per line: Name: value)", type: "textarea", rows: 3, placeholder: "Authorization: Bearer …" },
   ],
   host: [],
+  rss: [
+    { key: "url", label: "Feed URL", type: "text", placeholder: "https://example.com/feed.xml" },
+  ],
 };
 
-const TYPE_LABEL = { docker: "Docker", uptime_kuma: "Uptime Kuma", json: "JSON endpoint", host: "System" };
+const TYPE_LABEL = { docker: "Docker", uptime_kuma: "Uptime Kuma", json: "JSON endpoint", host: "System", rss: "RSS / Atom" };
 
 const BASE_FIELDS = [
   { key: "name", label: "Name", type: "text" },

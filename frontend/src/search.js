@@ -36,7 +36,11 @@ export const tidyTitle = (title) => (title || "").split(/\s+[-|·–—:]\s+/)[0
 export function queryTarget(q, template) {
   const s = q.trim();
   if (looksLikeUrl(s)) return normalizeUrl(s);
-  return (template || SEARCH_ENGINES.duckduckgo.url).replace("{q}", encodeURIComponent(s));
+  const t = template || SEARCH_ENGINES.duckduckgo.url;
+  // A template that forgot the {q} placeholder (e.g. "https://x/search?q=") gets the query
+  // appended after the separator it already wrote, instead of silently opening an empty search.
+  if (!t.includes("{q}") && t.endsWith("=")) return t + encodeURIComponent(s);
+  return t.replace("{q}", encodeURIComponent(s));
 }
 
 export function openUrl(url, newTab) {
