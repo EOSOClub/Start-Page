@@ -203,6 +203,41 @@ export const StatusWidget = {
   },
 };
 
+// ---------- System stats (host) ----------
+function fmtBytes(b) {
+  if (b == null) return "—";
+  if (b >= 1e12) return `${(b / 1e12).toFixed(1)} TB`;
+  if (b >= 1e9) return `${(b / 1e9).toFixed(1)} GB`;
+  if (b >= 1e6) return `${(b / 1e6).toFixed(1)} MB`;
+  return `${(b / 1e3).toFixed(0)} KB`;
+}
+
+export const SystemWidget = {
+  label: "System stats",
+  size: { w: 4, h: 3 },
+  fields: [
+    { key: "integration_id", label: "Host integration", type: "integration", integrationType: "host" },
+    { key: "title", label: "Title", type: "text", placeholder: "(hostname)" },
+  ],
+  Render: ({ widget, integrations, integrationData }) => {
+    const { integ, data } = useIntegration(widget, integrations, integrationData, "host");
+    const c = widget.config;
+    const problem = <Problem integ={integ} data={data} type="System" />;
+    if (!integ || !data || (!data.ok && !data.data)) return problem;
+    const d = data.data;
+    return (
+      <div className="group">
+        <Header title={c.title || (d.hostname ?? "—")} right={!data.ok ? <span className="muted">stale</span> : null} />
+        <div className="stats">
+          <div><b>{d.cpu_percent != null ? `${d.cpu_percent.toFixed(1)}%` : "—"}</b><span>CPU</span></div>
+          <div><b>{d.mem_used != null ? `${fmtBytes(d.mem_used)} / ${fmtBytes(d.mem_total)}` : "—"}</b><span>RAM</span></div>
+          <div><b>{d.disk_used != null ? `${fmtBytes(d.disk_used)} / ${fmtBytes(d.disk_total)}` : "—"}</b><span>Disk</span></div>
+        </div>
+      </div>
+    );
+  },
+};
+
 // ---------- Topology (service dependencies) ----------
 export const TopologyWidget = {
   label: "Topology (dependencies)",

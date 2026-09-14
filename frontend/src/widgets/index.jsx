@@ -1,7 +1,7 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import Icon from "./Icon.jsx";
-import { DockerWidget, StatusWidget, TopologyWidget, UptimeKumaWidget } from "./integrations.jsx";
+import { DockerWidget, StatusWidget, SystemWidget, TopologyWidget, UptimeKumaWidget } from "./integrations.jsx";
 import { BoxWidget, DividerWidget, HeadingWidget } from "./decorations.jsx";
 import { BookmarksWidget, GreetingWidget, NotesWidget, SearchWidget, TRANSPARENT_FIELD, WeatherWidget, useNow } from "./startpage.jsx";
 
@@ -370,6 +370,7 @@ export const WIDGET_TYPES = {
   docker: DockerWidget,
   uptime_kuma: UptimeKumaWidget,
   status: StatusWidget,
+  system: SystemWidget,
   divider: DividerWidget,
   heading: HeadingWidget,
   box: BoxWidget,

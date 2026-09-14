@@ -23,9 +23,10 @@ const TYPE_FIELDS = {
     { key: "method", label: "Method", type: "select", options: [{ value: "GET", label: "GET" }, { value: "POST", label: "POST" }] },
     { key: "headers_text", label: "Headers (one per line: Name: value)", type: "textarea", rows: 3, placeholder: "Authorization: Bearer …" },
   ],
+  host: [],
 };
 
-const TYPE_LABEL = { docker: "Docker", uptime_kuma: "Uptime Kuma", json: "JSON endpoint" };
+const TYPE_LABEL = { docker: "Docker", uptime_kuma: "Uptime Kuma", json: "JSON endpoint", host: "System" };
 
 const BASE_FIELDS = [
   { key: "name", label: "Name", type: "text" },
@@ -67,8 +68,12 @@ export default function IntegrationManager({ integrations, integrationData, onCh
   const save = async () => {
     setError("");
     const { id, data } = fromForm(editing);
-    if (!data.name || !data.config?.url) {
-      setError("Name and URL are required.");
+    if (!data.name) {
+      setError("Name is required.");
+      return;
+    }
+    if (data.type !== "host" && !data.config?.url) {
+      setError("URL is required.");
       return;
     }
     setBusy(true);

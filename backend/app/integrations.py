@@ -5,9 +5,12 @@ Provider types and their `config`:
   docker      {"url": "unix:///var/run/docker.sock" | "http://host:2375", "show_all": true}
   uptime_kuma {"url": "http://kuma:3001", "slug": "status-page-slug"}
   json        {"url": "...", "headers": {...}, "method": "GET"}
+  host        {} (no config needed — reads the local machine via psutil)
 """
 import asyncio
 import logging
+import os
+import socket
 import time
 from typing import Any
 
@@ -22,7 +25,7 @@ _data: dict[str, dict] = {}
 _next: dict[str, float] = {}
 _task: asyncio.Task | None = None
 
-TYPES = ["docker", "uptime_kuma", "json"]
+TYPES = ["docker", "uptime_kuma", "json", "host"]
 
 
 def get_all() -> dict[str, dict]:
@@ -130,7 +133,25 @@ async def _fetch_json(cfg: dict) -> Any:
             return {"text": resp.text}
 
 
-FETCHERS = {"docker": _fetch_docker, "uptime_kuma": _fetch_uptime_kuma, "json": _fetch_json}
+# ---------------- System stats (host) ----------------
+def _read_system(psutil):
+    """Sync helper — runs in a thread via asyncio.to_thread."""
+    vm = psutil.virtual_memory()
+    du = psutil.disk_usage(os.path.abspath(os.sep))
+    return {
+        "hostname": socket.gethostname(),
+        "cpu_percent": psutil.cpu_percent(None),
+        "mem_percent": vm.percent, "mem_used": vm.used, "mem_total": vm.total,
+        "disk_percent": du.percent, "disk_used": du.used, "disk_total": du.total,
+    }
+
+
+async def _fetch_system(cfg):
+    import psutil  # lazy: missing dep = error tile, not backend outage
+    return await asyncio.to_thread(_read_system, psutil)
+
+
+FETCHERS = {"docker": _fetch_docker, "uptime_kuma": _fetch_uptime_kuma, "json": _fetch_json, "host": _fetch_system}
 
 
 async def fetch(integration: models.Integration) -> dict:
