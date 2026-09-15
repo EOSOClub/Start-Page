@@ -116,7 +116,7 @@ export default function App() {
   const refreshPages = () => refreshPagesRef.current();
 
   const offlineMessage = (e) =>
-    boot.settings && e instanceof TypeError ? "Can't reach the Start Page server. Showing the last saved copy." : e.message;
+    boot.settings && e instanceof TypeError ? "Can't reach the Start Page server. Showing the last saved copy when one exists." : e.message;
 
   useEffect(() => {
     Promise.all([loadDashboards(), loadServices(), loadIntegrations(), loadSettings()]).catch((e) => setError(offlineMessage(e)));
@@ -127,7 +127,7 @@ export default function App() {
     localStorage.setItem("sp.dashboard", currentId);
     setSelectedId(null);
     const cached = readCache().pages?.[currentId];
-    setDashboard((cur) => (cur?.id === currentId ? cur : cached || cur));
+    setDashboard((cur) => (cur?.id === currentId ? cur : cached || null));
     loadDashboard().catch((e) => setError(offlineMessage(e)));
   }, [currentId, loadDashboard]); // eslint-disable-line
 
@@ -270,6 +270,7 @@ export default function App() {
       await api.updateWidget(id, { config }, { keepalive: keepalive && JSON.stringify(config).length < 60_000 });
     } catch (e) {
       setError(`Couldn't save: ${e.message}`);
+      throw e;
     }
   }, []);
 

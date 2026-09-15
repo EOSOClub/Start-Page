@@ -58,16 +58,20 @@ export default function LinksEditor({ value, onChange }) {
 
   const fillNames = async (ids) => {
     setBusy(true);
-    const results = await Promise.all(
-      ids.map((id) => {
-        const link = latest.current.value.find((l) => l.id === id);
-        return api.siteMeta(link.url).then((m) => [id, tidyTitle(m.title)]).catch(() => [id, ""]);
-      })
-    );
-    const names = Object.fromEntries(results.filter(([, t]) => t));
-    const cur = latest.current;
-    cur.onChange(cur.value.map((l) => (!l.name && names[l.id] ? { ...l, name: names[l.id] } : l)));
-    setBusy(false);
+    try {
+      const results = await Promise.all(
+        ids.map((id) => {
+          const link = latest.current.value.find((l) => l.id === id);
+          if (!link) return [id, ""];
+          return api.siteMeta(link.url).then((m) => [id, tidyTitle(m.title)]).catch(() => [id, ""]);
+        })
+      );
+      const names = Object.fromEntries(results.filter(([, t]) => t));
+      const cur = latest.current;
+      cur.onChange(cur.value.map((l) => (!l.name && names[l.id] ? { ...l, name: names[l.id] } : l)));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addBulk = () => {

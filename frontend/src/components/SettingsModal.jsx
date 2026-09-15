@@ -40,6 +40,9 @@ export default function SettingsModal({ settings, onSave, onRestored, onClose })
   const [backups, setBackups] = useState([]);
   const [msg, setMsg] = useState("");
 
+  // Keep the form in sync when the settings change under it (e.g. after a backup restore reloads everything).
+  useEffect(() => setValue(settings), [settings]);
+
   const loadBackups = () => api.listBackups().then(setBackups).catch(() => {});
   useEffect(() => {
     if (tab === "backups") loadBackups();

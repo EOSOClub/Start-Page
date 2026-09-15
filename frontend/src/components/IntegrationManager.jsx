@@ -113,7 +113,7 @@ export default function IntegrationManager({ integrations, integrationData, onCh
           </>
         }
       >
-        <ConfigForm fields={BASE_FIELDS} value={editing} onChange={setEditing} />
+        <ConfigForm fields={BASE_FIELDS} value={editing} onChange={(next) => setEditing(next.type !== editing.type ? { ...next, config: {} } : next)} />
         <div style={{ height: 12 }} />
         <ConfigForm fields={fields} value={editing.config} onChange={(cfg) => setEditing({ ...editing, config: cfg })} />
       </Modal>

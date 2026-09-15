@@ -460,6 +460,7 @@ function NotesRender({ widget }) {
   const timer = useRef();
   const configRef = useRef(c);
   configRef.current = c;
+  const saveSeq = useRef(0);
 
   const flush = useCallback(
     (keepalive = false) => {
@@ -467,7 +468,10 @@ function NotesRender({ widget }) {
       if (!pending.current || !updateWidgetConfig) return;
       const patch = pending.current;
       pending.current = null;
-      Promise.resolve(updateWidgetConfig(widget.id, { ...configRef.current, ...patch }, { keepalive })).then(() => !pending.current && setSaved(true));
+      const seq = ++saveSeq.current;
+      Promise.resolve(updateWidgetConfig(widget.id, { ...configRef.current, ...patch }, { keepalive }))
+        .then(() => seq === saveSeq.current && !pending.current && setSaved(true))
+        .catch(() => seq === saveSeq.current && setSaved(false));
     },
     [widget.id, updateWidgetConfig]
   );
