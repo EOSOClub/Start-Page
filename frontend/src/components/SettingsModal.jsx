@@ -74,7 +74,7 @@ export default function SettingsModal({ settings, onSave, onRestored, onClose })
           <>
             {msg && <span className="muted">{msg}</span>}
             <span className="spacer" />
-            <button className="btn-primary" onClick={() => api.createBackup("manual").then(loadBackups)}>Back up now</button>
+            <button className="btn-primary" onClick={() => api.createBackup("manual").then(loadBackups).catch((e) => setMsg(e.message))}>Back up now</button>
           </>
         )
       }
@@ -99,7 +99,7 @@ export default function SettingsModal({ settings, onSave, onRestored, onClose })
                   <td className="muted nowrap">{new Date(b.modified * 1000).toLocaleString()}</td>
                   <td className="right nowrap">
                     <button className="btn-sm" onClick={() => restore(b.name)}>Restore</button>{" "}
-                    <button className="btn-sm btn-danger" onClick={() => confirm(`Delete ${b.name}?`) && api.deleteBackup(b.name).then(loadBackups)}>✕</button>
+                    <button className="btn-sm btn-danger" onClick={() => confirm(`Delete ${b.name}?`) && api.deleteBackup(b.name).then(loadBackups).catch((e) => setMsg(e.message))}>✕</button>
                   </td>
                 </tr>
               ))}

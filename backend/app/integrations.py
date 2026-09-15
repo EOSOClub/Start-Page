@@ -154,14 +154,31 @@ async def _fetch_system(cfg):
 
 
 # ---------------- RSS / Atom ----------------
+RSS_MAX_BYTES = 5_000_000
+
+
+async def _read_limited(resp: httpx.Response, limit: int) -> bytes:
+    """Stream up to `limit` bytes, truncating (never rejecting) an oversized body.
+    Mirrors routers/favicons._read_limited; buffering bound ≈ limit + one chunk."""
+    chunks, total = [], 0
+    async for chunk in resp.aiter_bytes():
+        chunks.append(chunk)
+        total += len(chunk)
+        if total > limit:
+            break
+    return b"".join(chunks)[:limit]
+
+
 async def _fetch_rss(cfg: dict) -> Any:
     async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
-        resp = await client.get(cfg["url"], follow_redirects=True)
-        resp.raise_for_status()
+        async with client.stream("GET", cfg["url"], follow_redirects=True) as resp:
+            resp.raise_for_status()
+            body = await _read_limited(resp, RSS_MAX_BYTES)
     import feedparser  # lazy: missing dep = error tile, not backend outage
     # Parsing is CPU-bound and unbounded in time, so it must not run on the event loop
-    # (ADR 006). The 5 MB cap keeps a huge or entity-amplified feed proportionate.
-    parsed = await asyncio.to_thread(feedparser.parse, resp.content[:5_000_000])
+    # (ADR 006). The 5 MB cap keeps a huge or entity-amplified feed proportionate — it
+    # caps the download too (streamed, truncated — never rejected).
+    parsed = await asyncio.to_thread(feedparser.parse, body)
     entries = []
     for e in parsed.entries[:30]:
         when = e.get("published_parsed")

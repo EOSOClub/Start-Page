@@ -127,6 +127,7 @@ export default function IntegrationManager({ integrations, integrationData, onCh
       wide
       footer={
         <>
+          {error && <span className="error">{error}</span>}
           <span className="muted">{integrations.length} integrations</span>
           <span className="spacer" />
           <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>+ New integration</button>
@@ -152,7 +153,7 @@ export default function IntegrationManager({ integrations, integrationData, onCh
                 <td className="muted">{i.config?.url}</td>
                 <td className="muted">{d?.error ? <span className="error">{d.error}</span> : d?.fetched_at ? `updated ${Math.round((Date.now() / 1000 - d.fetched_at))}s ago` : ""}</td>
                 <td className="right nowrap">
-                  <button className="btn-sm" onClick={() => api.refreshIntegration(i.id).then(onChanged)} title="Refresh now">↻</button>{" "}
+                  <button className="btn-sm" onClick={() => api.refreshIntegration(i.id).then(onChanged).catch((e) => setError(e.message))} title="Refresh now">↻</button>{" "}
                   <button className="btn-sm" onClick={() => setEditing(toForm(i))}>Edit</button>{" "}
                   <button className="btn-sm btn-danger" onClick={() => remove(i)}>✕</button>
                 </td>

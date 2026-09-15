@@ -32,7 +32,16 @@ const readCache = () => {
   }
 };
 const boot = readCache();
-const bootId = localStorage.getItem("sp.dashboard") || boot.dashboards?.[0]?.id || null;
+// Mirror readCache: storage can throw (blocked cookies / storage-disabled iframes) and a throw
+// here at module scope would blank the whole bundle.
+const readBootId = () => {
+  try {
+    return localStorage.getItem("sp.dashboard");
+  } catch {
+    return null;
+  }
+};
+const bootId = readBootId() || boot.dashboards?.[0]?.id || null;
 
 const SHORTCUTS = [
   ["/", "focus the search bar, or open search"],

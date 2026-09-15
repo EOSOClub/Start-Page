@@ -108,6 +108,7 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
       wide
       footer={
         <>
+          {error && <span className="error">{error}</span>}
           <span className="muted">{services.length} services</span>
           <span className="spacer" />
           <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>+ New service</button>
@@ -129,7 +130,7 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
                   <td className="muted"><a href={s.url} target="_blank" rel="noreferrer">{s.url}</a></td>
                   <td className="muted right">{health[s.id]?.latency_ms != null ? `${health[s.id].latency_ms} ms` : ""}</td>
                   <td className="right nowrap">
-                    <button className="btn-sm" onClick={() => api.checkHealth(s.id).then(onChanged)} title="Check now">↻</button>{" "}
+                    <button className="btn-sm" onClick={() => api.checkHealth(s.id).then(onChanged).catch((e) => setError(e.message))} title="Check now">↻</button>{" "}
                     <button className="btn-sm" onClick={() => setEditing({ ...EMPTY, ...s })}>Edit</button>{" "}
                     <button className="btn-sm btn-danger" onClick={() => remove(s)}>✕</button>
                   </td>

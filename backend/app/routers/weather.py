@@ -18,6 +18,11 @@ _cache: dict[tuple, tuple[float, dict]] = {}
 LATLON = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$")
 
 
+def _at(arr, i):
+    """`arr[i]` or None — Open-Meteo can return ragged/missing daily arrays."""
+    return arr[i] if isinstance(arr, list) and i < len(arr) else None
+
+
 async def _geocode(client: httpx.AsyncClient, location: str) -> dict:
     m = LATLON.match(location)
     if m:
@@ -88,10 +93,10 @@ async def weather(
         "daily": [
             {
                 "date": date,
-                "code": daily["weather_code"][i],
-                "max": daily["temperature_2m_max"][i],
-                "min": daily["temperature_2m_min"][i],
-                "precip": (daily.get("precipitation_probability_max") or [None] * (i + 1))[i],
+                "code": _at(daily.get("weather_code"), i),
+                "max": _at(daily.get("temperature_2m_max"), i),
+                "min": _at(daily.get("temperature_2m_min"), i),
+                "precip": _at(daily.get("precipitation_probability_max"), i),
             }
             for i, date in enumerate(daily.get("time", [])[:days])
         ],
