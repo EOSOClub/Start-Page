@@ -58,6 +58,12 @@ def import_config(
         db.flush()
         for w in d.widgets:
             wd = w.model_dump()
+            # Widget.id is a leaf key (nothing FKs it) and the frontend refetches
+            # everything after import, so re-inserting a moved widget with a fresh
+            # id is invisible to the user — and makes the same-id collision with a
+            # live widget impossible by construction (imported widget ids regenerate;
+            # every other entity keeps the documented "same id = updated" contract).
+            wd.pop("id", None)
             wd["dashboard_id"] = dash.id
             if wd.get("service_id") and not db.get(models.Service, wd["service_id"]):
                 wd["service_id"] = None

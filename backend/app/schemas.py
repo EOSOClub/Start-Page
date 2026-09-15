@@ -23,7 +23,7 @@ class ServiceBase(BaseModel):
 
 
 class ServiceCreate(ServiceBase):
-    id: Optional[str] = None
+    id: Optional[str] = Field(default=None, min_length=1)
 
 
 class ServiceUpdate(BaseModel):
@@ -62,7 +62,7 @@ class WidgetBase(BaseModel):
 
 
 class WidgetCreate(WidgetBase):
-    id: Optional[str] = None
+    id: Optional[str] = Field(default=None, min_length=1)
 
 
 class WidgetUpdate(BaseModel):
@@ -100,7 +100,7 @@ class DashboardBase(BaseModel):
 
 
 class DashboardCreate(DashboardBase):
-    id: Optional[str] = None
+    id: Optional[str] = Field(default=None, min_length=1)
 
 
 class DashboardUpdate(BaseModel):
@@ -140,7 +140,7 @@ class IntegrationBase(BaseModel):
 
 
 class IntegrationCreate(IntegrationBase):
-    id: Optional[str] = None
+    id: Optional[str] = Field(default=None, min_length=1)
 
 
 class IntegrationUpdate(BaseModel):

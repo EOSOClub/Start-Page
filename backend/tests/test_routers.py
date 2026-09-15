@@ -7,6 +7,9 @@ history paths). Every mutating call carries the CSRF header the real app enforce
 TestClient.
 """
 
+import pytest
+
+from app import backups
 from conftest import HEADERS
 
 
@@ -149,3 +152,111 @@ def test_settings_defaults_and_update(client):
     assert res.status_code == 200
     assert res.json()["title"] == "My Start"
     assert client.get("/api/settings").json()["open_new_tab"] is True
+
+
+# ---------- Iteration 011: backend hardening regressions ----------
+
+
+def test_unknown_api_path_returns_404_json(client):
+    res = client.get("/api/definitely-not-a-route")
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Not found"
+    assert not res.headers.get("content-type", "").startswith("text/html")
+
+
+@pytest.mark.parametrize("path", ["/..%2frequirements.txt", "/%2e%2e/requirements.txt"])
+def test_static_traversal_is_rejected(client, path):
+    # Both decode to backend/static/../requirements.txt; the resolve()-then-
+    # is_relative_to() guard must 404 and never leak the tracked file's bytes.
+    res = client.get(path)
+    assert res.status_code == 404
+    assert b"fastapi" not in res.content
+
+
+def test_index_html_served(client):
+    res = client.get("/index.html")
+    assert res.status_code == 200
+    assert res.headers.get("content-type", "").startswith("text/html")
+
+
+def test_widget_create_bogus_service_id_is_400(client):
+    dash = _create_dashboard(client)
+    res = client.post(
+        f"/api/dashboards/{dash['id']}/widgets",
+        json={"type": "link", "service_id": "does-not-exist"},
+        headers=HEADERS,
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Invalid reference or duplicate id"
+
+
+def test_widget_patch_bogus_service_id_is_400(client):
+    dash = _create_dashboard(client)
+    w = _create_widget(client, dash["id"])
+    res = client.patch(
+        f"/api/widgets/{w['id']}",
+        json={"service_id": "does-not-exist"},
+        headers=HEADERS,
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Invalid reference or duplicate id"
+
+
+def test_widget_duplicate_client_id_is_400(client):
+    dash = _create_dashboard(client)
+    res = client.post(
+        f"/api/dashboards/{dash['id']}/widgets",
+        json={"type": "link", "id": "same-id"},
+        headers=HEADERS,
+    )
+    assert res.status_code == 201
+    res = client.post(
+        f"/api/dashboards/{dash['id']}/widgets",
+        json={"type": "link", "id": "same-id"},
+        headers=HEADERS,
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Invalid reference or duplicate id"
+
+
+def test_merge_import_moved_widget_gets_fresh_id(client):
+    a = _create_dashboard(client, name="A")
+    b = _create_dashboard(client, name="B")
+    w = _create_widget(client, b["id"], config={"title": "orig"})
+    wid = w["id"]
+
+    bundle = client.get("/api/config/export").json()
+    adash = next(d for d in bundle["dashboards"] if d["id"] == a["id"])
+    bdash = next(d for d in bundle["dashboards"] if d["id"] == b["id"])
+    moved = next(x for x in bdash["widgets"] if x["id"] == wid)
+    bdash["widgets"].remove(moved)
+    adash["widgets"].append(moved)
+
+    res = client.post("/api/config/import?replace=false", json=bundle, headers=HEADERS)
+    assert res.status_code == 200
+
+    a_widgets = client.get(f"/api/dashboards/{a['id']}").json()["widgets"]
+    assert len(a_widgets) == 1
+    ready = a_widgets[0]
+    assert ready["id"] != wid
+    assert ready["config"] == {"title": "orig"}
+    assert client.get(f"/api/dashboards/{b['id']}").json()["widgets"] == []
+
+
+def test_create_dashboard_empty_id_rejected(client):
+    res = client.post("/api/dashboards", json={"name": "X", "id": ""}, headers=HEADERS)
+    assert res.status_code == 422
+
+
+def test_backup_same_label_same_second_distinct_files(monkeypatch, tmp_path):
+    # Same-label same-second backups (double-click restore / "Backup now") used to
+    # clobber each other; the %f stamp makes names unique. Patched so the real
+    # backend/data/backups/ is never touched (ADR-009 isolation contract).
+    monkeypatch.setattr(backups, "BACKUP_DIR", tmp_path)
+    monkeypatch.setattr(
+        backups, "_export_bundle", lambda: {"services": [], "dashboards": [], "integrations": [], "settings": {}}
+    )
+    first = backups.create_backup("manual")
+    second = backups.create_backup("manual")
+    assert first["name"] != second["name"]
+    assert {p.name for p in tmp_path.glob("*.json")} == {first["name"], second["name"]}

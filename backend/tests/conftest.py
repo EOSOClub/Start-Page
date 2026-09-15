@@ -12,12 +12,26 @@ Isolation contract (ADR — Iteration 009):
 
 import pytest
 from fastapi.testclient import TestClient
+from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
-from app.main import app  # noqa: F401  (importing main registers the models)
+
+# The SPA catch-all and /assets mount only register when the frontend build dir
+# exists (main.py guards on STATIC_DIR.is_dir()). backend/static/ is gitignored,
+# so on a fresh clone the app would register no SPA routes and the traversal /
+# api-404 regression tests would pass vacuously. Bootstrap the (gitignored) build
+# dir BEFORE importing app.main — the only FS writes here are backend/static/,
+# never backend/data/, so the iteration-009 isolation contract holds. A real build
+# (index.html present) is left untouched.
+_STATIC = Path(__file__).resolve().parents[1] / "static"
+(_STATIC / "assets").mkdir(parents=True, exist_ok=True)
+if not (_STATIC / "index.html").exists():
+    (_STATIC / "index.html").write_text("<!doctype html><title>test</title>", encoding="utf-8")
+
+from app.main import app  # noqa: E402, F401  (importing main registers the models)
 
 HEADERS = {"x-requested-by": "startpage"}
 

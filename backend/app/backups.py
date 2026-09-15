@@ -31,7 +31,7 @@ def list_backups() -> list[dict]:
 
 def create_backup(label: str = "auto") -> dict:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S%f")
     path = BACKUP_DIR / f"{stamp}-{label}.json"
     path.write_text(json.dumps(_export_bundle(), indent=2), encoding="utf-8")
     log.info("backup written: %s", path.name)

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -110,6 +111,17 @@ async def cache_headers(request: Request, call_next):
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
+
+@app.exception_handler(IntegrityError)
+async def on_integrity_error(request: Request, exc: IntegrityError):
+    return JSONResponse({"detail": "Invalid reference or duplicate id"}, status_code=400)
+
+
+@app.exception_handler(OperationalError)
+async def on_operational_error(request: Request, exc: OperationalError):
+    return JSONResponse({"detail": "Database busy — please retry"}, status_code=503)
+
+
 app.include_router(dashboards.router)
 app.include_router(widgets.router)
 app.include_router(services.router)
@@ -128,7 +140,15 @@ if STATIC_DIR.is_dir():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        candidate = STATIC_DIR / full_path
-        if full_path and candidate.is_file():
+        # A path that reaches the SPA catch-all is either a real build artifact or a
+        # 404 — never the HTML shell: unknown /api/ paths must answer a real 404.
+        if full_path == "api" or full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
+        # Resolve BEFORE the containment check: Path("static/../data/x").is_relative_to()
+        # is lexically True, and resolve() also follows symlinks out of static.
+        candidate = (STATIC_DIR / full_path).resolve()
+        if full_path and candidate.is_relative_to(STATIC_DIR.resolve()) and candidate.is_file():
             return FileResponse(candidate)
+        if full_path:
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         return FileResponse(STATIC_DIR / "index.html")
