@@ -347,7 +347,7 @@ function WeatherRender({ widget }) {
     setError("");
     const stale = () => {
       const cur = readLS(cacheKey);
-      return !cur || Date.now() - cur.fetched_at * 1000 > WEATHER_REFRESH_MS;
+      return !cur || !cur.fetched_at || Date.now() - cur.fetched_at * 1000 > WEATHER_REFRESH_MS;
     };
     const load = () => {
       if (document.hidden) return;
@@ -373,7 +373,7 @@ function WeatherRender({ widget }) {
   }, [cacheKey, location, units, days]);
 
   if (!location) return <div className="muted pad">Set a location in the widget settings.</div>;
-  if (!data) return <div className={`muted pad ${error ? "error" : ""}`}>{error || "Loading weather…"}</div>;
+  if (!data?.current || !Array.isArray(data?.daily)) return <div className={`muted pad ${error ? "error" : ""}`}>{error || "Loading weather…"}</div>;
 
   const cur = data.current;
   const now = wmo(cur.code, cur.is_day);

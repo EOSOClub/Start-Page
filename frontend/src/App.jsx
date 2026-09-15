@@ -73,6 +73,7 @@ export default function App() {
   const [renamingId, setRenamingId] = useState(null);
   const [dragTab, setDragTab] = useState(null); // {id, over?, before?}
   const history = useHistory();
+  const addPageDetailRef = useRef(null); // full page detail (widgets included) captured by add-undo for redo to restore
 
   // ----- loading -----
   const loadDashboards = useCallback(async () => {
@@ -88,7 +89,10 @@ export default function App() {
     if (!currentId) return;
     const d = await api.getDashboard(currentId);
     // Ignore a late response for a page the user already switched away from.
-    if (currentIdRef.current === d.id) setDashboard(d);
+    if (currentIdRef.current === d.id) {
+      setDashboard(d);
+      setError(""); // a successful load clears any stale banner
+    }
   }, [currentId]);
 
   const loadServices = useCallback(async () => {
@@ -378,8 +382,20 @@ export default function App() {
       const d = await api.createDashboard({ name });
       history.push({
         label: "Add page",
-        undo: () => onPage(null, () => api.deleteDashboard(d.id)),
-        redo: async () => { await api.createDashboard({ id: d.id, name: d.name, position: d.position }); await refreshPages(); setCurrentId(d.id); },
+        undo: () =>
+          onPage(null, async () => {
+            addPageDetailRef.current = await api.getDashboard(d.id);
+            await api.deleteDashboard(d.id);
+          }),
+        redo: async () => {
+          if (!addPageDetailRef.current) {
+            await api.createDashboard({ id: d.id, name: d.name, position: d.position });
+          } else {
+            await api.importConfig({ services: [], integrations: [], settings: {}, dashboards: [addPageDetailRef.current] }, false);
+          }
+          await refreshPages();
+          setCurrentId(d.id);
+        },
       });
       await loadDashboards();
       setCurrentId(d.id);
