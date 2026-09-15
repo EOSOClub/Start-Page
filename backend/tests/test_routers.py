@@ -7,6 +7,7 @@ history paths). Every mutating call carries the CSRF header the real app enforce
 TestClient.
 """
 
+import fastapi
 import pytest
 
 from app import backups
@@ -32,6 +33,23 @@ def _create_widget(client, dashboard_id, type="link", **kw):
 def test_csrf_guard_rejects_unsafe_calls_without_header(client):
     res = client.post("/api/dashboards", json={"name": "X"})
     assert res.status_code == 403
+
+
+def test_cve_badhost_dependency_floor():
+    # CVE-2026-48710 (BadHost) is fixed only in starlette >= 1.0.1 (CVE is in all
+    # of 0.x). fastapi >= 0.141 allows it but does not force it (its floor is
+    # starlette>=0.46.0), hence the explicit starlette floor. Version canary: red
+    # on the vulnerable pair, green on the fixed stack — silently guards the floor
+    # against requirements.txt pruning. The CVE itself is NOT exercisable under
+    # TestClient (httpx ASGITransport builds the ASGI scope itself; the
+    # Host-header -> url.path plumbing never exists), so the floor is the guarantee.
+    import starlette
+
+    def _ver(v: str) -> tuple:
+        return tuple(int(p) for p in v.split("."))
+
+    assert _ver(starlette.__version__) >= (1, 0, 1)
+    assert _ver(fastapi.__version__) >= (0, 141, 0)
 
 
 def test_dashboard_create_list_get(client):
