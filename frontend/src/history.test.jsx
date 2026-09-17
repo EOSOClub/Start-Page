@@ -142,4 +142,29 @@ describe("useHistory", () => {
     expect(result.current.undoLabel).toBe("A");
     expect(result.current.failedLabel).toBeUndefined();
   });
+
+  it("(d) skip is refused while a retry is in flight (busy guard)", async () => {
+    const { result } = renderHook(() => useHistory());
+    let finishRetry;
+    const b = entry("B", {
+      undo: vi.fn()
+        .mockRejectedValueOnce(new Error("gone"))
+        .mockImplementationOnce(() => new Promise((resolve) => { finishRetry = resolve; })),
+    });
+    act(() => result.current.push(entry("A")));
+    act(() => result.current.push(b));
+    await failUndo(result);
+    expect(result.current.failedLabel).toBe("B");
+    let retry;
+    act(() => { retry = result.current.undo(); });
+    let skipped;
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped).toBeNull();
+    expect(result.current.undoLabel).toBe("B");
+    await act(async () => { finishRetry(); await retry; });
+    // The retry won: B moved to redo as a normal undo, nothing was dropped.
+    expect(result.current.undoLabel).toBe("A");
+    expect(result.current.redoLabel).toBe("B");
+    expect(result.current.failedLabel).toBeUndefined();
+  });
 });
