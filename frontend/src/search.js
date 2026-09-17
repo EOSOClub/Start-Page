@@ -48,14 +48,21 @@ export function openUrl(url, newTab) {
   else window.location.href = url;
 }
 
-/** Every link on the page, whether it is a Link widget or part of a Bookmarks widget. */
+/**
+ * Every link on the page, whether it is a Link widget or part of a Bookmarks widget.
+ * Widget config is untyped server data and this runs in App's render (palette, Search widget),
+ * so every field is coerced to a string and malformed entries are skipped.
+ */
 export function collectLinks(widgets = []) {
+  const str = (v) => (typeof v === "string" ? v : "");
   const out = [];
   for (const w of widgets) {
-    if (w.type === "link" && w.config?.url) {
-      out.push({ id: w.id, name: w.config.name, url: w.config.url, icon: w.config.icon, description: w.config.description });
-    } else if (w.type === "bookmarks") {
-      for (const l of w.config?.links || []) if (l.url) out.push({ id: `${w.id}-${l.id}`, name: l.name, url: l.url, icon: l.icon, description: w.config.title });
+    const c = w.config;
+    if (w.type === "link" && str(c?.url)) {
+      out.push({ id: w.id, name: str(c.name), url: c.url, icon: str(c.icon), description: str(c.description) });
+    } else if (w.type === "bookmarks" && Array.isArray(c?.links)) {
+      for (const l of c.links)
+        if (str(l?.url)) out.push({ id: `${w.id}-${l.id}`, name: str(l.name), url: l.url, icon: str(l.icon), description: str(c.title) });
     }
   }
   return out;
