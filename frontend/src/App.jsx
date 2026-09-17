@@ -221,6 +221,7 @@ export default function App() {
 
   const doUndo = () => run(async () => { const e = await history.undo(); if (e) setToast({ text: `Undid: ${e.label}`, actionLabel: "Redo", action: doRedo }); });
   const doRedo = () => run(async () => { const e = await history.redo(); if (e) setToast({ text: `Redid: ${e.label}`, actionLabel: "Undo", action: doUndo }); });
+  const doSkip = () => { const e = history.skip(); if (e) setToast({ text: `Skipped: ${e.label}` }); };
 
   /** Run a history step on the page it belongs to, so undo never changes a page you can't see. */
   const onPage = async (dashId, fn) => {
@@ -691,7 +692,19 @@ export default function App() {
         </div>
       </header>
 
-      {error && <div className="banner error" onClick={() => setError("")}>{error}</div>}
+      {error && (
+        <div className="banner error" onClick={() => setError("")}>
+          {error}
+          {history.failedLabel && (
+            <>
+              {" "}
+              <button className="btn-sm" onClick={doSkip} title="Drop this step from undo history. Its change stays as it is; older steps become reachable again.">
+                Skip stuck {history.failedAction}: "{history.failedLabel}"
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {dashboard ? (
         <Canvas

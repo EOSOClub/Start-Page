@@ -62,4 +62,84 @@ describe("useHistory", () => {
     expect(result.current.undoLabel).toBe("A");
     expect(result.current.redoLabel).toBe("B");
   });
+
+  const failUndo = async (result) => {
+    await act(async () => {
+      await expect(result.current.undo()).rejects.toThrow("gone");
+    });
+  };
+
+  it("(a) skip after a failing undo drops only that entry and never moves it to redo", async () => {
+    const { result } = renderHook(() => useHistory());
+    const a = entry("A");
+    const b = entry("B", { undo: vi.fn().mockRejectedValue(new Error("gone")) });
+    act(() => result.current.push(a));
+    act(() => result.current.push(b));
+    await failUndo(result);
+    expect(result.current.failedLabel).toBe("B");
+    expect(result.current.failedAction).toBe("undo");
+    let skipped;
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped.label).toBe("B");
+    expect(result.current.undoLabel).toBe("A");
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.failedLabel).toBeUndefined();
+    expect(b.undo).toHaveBeenCalledOnce();
+    await act(() => result.current.undo());
+    expect(a.undo).toHaveBeenCalledOnce();
+    expect(result.current.redoLabel).toBe("A");
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it("(b) skip is a no-op without a live failure (none, after push, after a successful retry)", async () => {
+    const { result } = renderHook(() => useHistory());
+    let skipped;
+    // No failure at all.
+    act(() => result.current.push(entry("A")));
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped).toBeNull();
+    expect(result.current.undoLabel).toBe("A");
+    // Failure, then a push: the record is stale and must not drop C.
+    act(() => result.current.push(entry("B", { undo: vi.fn().mockRejectedValue(new Error("gone")) })));
+    await failUndo(result);
+    expect(result.current.failedLabel).toBe("B");
+    act(() => result.current.push(entry("C")));
+    expect(result.current.failedLabel).toBeUndefined();
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped).toBeNull();
+    expect(result.current.undoLabel).toBe("C");
+    // Failure, then a successful retry: the record is cleared.
+    act(() => result.current.push(entry("D", { undo: vi.fn().mockRejectedValueOnce(new Error("gone")).mockResolvedValue() })));
+    await failUndo(result);
+    expect(result.current.failedLabel).toBe("D");
+    await act(() => result.current.undo());
+    expect(result.current.failedLabel).toBeUndefined();
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped).toBeNull();
+    expect(result.current.undoLabel).toBe("C");
+    expect(result.current.redoLabel).toBe("D");
+  });
+
+  it("(c) skip after a failing redo drops only the redo top and leaves undo alone", async () => {
+    const { result } = renderHook(() => useHistory());
+    const a = entry("A");
+    const b = entry("B", { redo: vi.fn().mockRejectedValue(new Error("gone")) });
+    act(() => result.current.push(a));
+    act(() => result.current.push(b));
+    await act(() => result.current.undo());
+    expect(result.current.undoLabel).toBe("A");
+    expect(result.current.redoLabel).toBe("B");
+    await act(async () => {
+      await expect(result.current.redo()).rejects.toThrow("gone");
+    });
+    expect(result.current.failedAction).toBe("redo");
+    expect(result.current.failedLabel).toBe("B");
+    let skipped;
+    act(() => { skipped = result.current.skip(); });
+    expect(skipped.label).toBe("B");
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.canUndo).toBe(true);
+    expect(result.current.undoLabel).toBe("A");
+    expect(result.current.failedLabel).toBeUndefined();
+  });
 });

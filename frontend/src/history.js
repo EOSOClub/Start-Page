@@ -8,17 +8,20 @@ const MERGE_MS = 1200;
  * An entry is {label, undo: async () => void, redo: async () => void, mergeKey?}.
  * Entries pushed with the same mergeKey within MERGE_MS collapse into one
  * (e.g. a run of arrow-key nudges), keeping the oldest `undo` and newest `redo`.
+ * ADR-015: a failing step keeps its entry (keep-and-retry); only an explicit skip() drops it.
  */
 export function useHistory() {
   const past = useRef([]);
   const future = useRef([]);
   const busy = useRef(false);
+  const failed = useRef(null); // {action, entry} of the last failing step; cleared on push/success
   const [, setVersion] = useState(0);
   const bump = () => setVersion((v) => v + 1);
 
   const push = useCallback((entry) => {
     const last = past.current[past.current.length - 1];
     const now = Date.now();
+    failed.current = null;
     if (entry.mergeKey && last?.mergeKey === entry.mergeKey && now - last.at < MERGE_MS) {
       last.redo = entry.redo;
       last.at = now;
@@ -37,7 +40,11 @@ export function useHistory() {
       await entry[action]();
       from.current = from.current.slice(0, -1);
       to.current = [...to.current, { ...entry, mergeKey: undefined }];
+      failed.current = null;
       return entry;
+    } catch (e) {
+      failed.current = { action, entry };
+      throw e;
     } finally {
       busy.current = false;
       bump();
@@ -47,10 +54,25 @@ export function useHistory() {
   const undo = useCallback(() => step(past, future, "undo"), [step]);
   const redo = useCallback(() => step(future, past, "redo"), [step]);
 
+  // Drop the stuck entry from the stack it failed on. Never moved to the other stack.
+  const skip = useCallback(() => {
+    if (busy.current || !failed.current) return null;
+    const from = failed.current.action === "undo" ? past : future;
+    failed.current = null;
+    bump();
+    if (!from.current.length) return null;
+    const entry = from.current[from.current.length - 1];
+    from.current = from.current.slice(0, -1);
+    return entry;
+  }, []);
+
   return {
     push,
     undo,
     redo,
+    skip,
+    failedAction: failed.current?.action,
+    failedLabel: failed.current?.entry.label,
     canUndo: past.current.length > 0,
     canRedo: future.current.length > 0,
     undoLabel: past.current[past.current.length - 1]?.label,
