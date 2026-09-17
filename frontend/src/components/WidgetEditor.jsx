@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import ConfigForm from "./ConfigForm.jsx";
+import ErrorBoundary from "./ErrorBoundary.jsx";
 import { WIDGET_TYPES, defaultConfig } from "../widgets/index.jsx";
 
 /**
@@ -11,7 +12,7 @@ export default function WidgetEditor({ widget, services, integrations = [], dash
   const [type, setType] = useState(widget.type);
   const [serviceId, setServiceId] = useState(widget.service_id ?? "");
   const [config, setConfig] = useState(widget.config ?? {});
-  const def = WIDGET_TYPES[type];
+  const def = WIDGET_TYPES[type] || { label: type, fields: [] };
   const isNew = !widget.id;
 
   const save = () => onSave({ type, service_id: def.usesService ? serviceId || null : null, config });
@@ -86,7 +87,14 @@ export default function WidgetEditor({ widget, services, integrations = [], dash
           </div>
         )}
       </div>
-      <ConfigForm fields={def.fields} value={config} onChange={setConfig} services={services} integrations={integrations} />
+      <ErrorBoundary
+        resetKey={config}
+        fallback={() => (
+          <div className="help">These settings can't be edited (invalid config). You can still delete this widget.</div>
+        )}
+      >
+        <ConfigForm fields={def.fields} value={config} onChange={setConfig} services={services} integrations={integrations} />
+      </ErrorBoundary>
       {def.fields.some((f) => f.type === "integration") && (
         <div className="help" style={{ marginTop: 10 }}>
           <button type="button" className="btn-sm" onClick={onManageIntegrations}>Manage integrations…</button>

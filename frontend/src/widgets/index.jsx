@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import Icon from "./Icon.jsx";
+import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { DockerWidget, RssWidget, StatusWidget, SystemWidget, TopologyWidget, UptimeKumaWidget } from "./integrations.jsx";
 import { BoxWidget, DividerWidget, HeadingWidget } from "./decorations.jsx";
 import { BookmarksWidget, GreetingWidget, NotesWidget, SearchWidget, TRANSPARENT_FIELD, WeatherWidget, useNow } from "./startpage.jsx";
@@ -386,14 +387,21 @@ export function RenderWidget({ widget, services, health, integrations = [], inte
   if (!def) return <div className="muted pad">Unknown widget type: {widget.type}</div>;
   const service = widget.service_id ? services.find((s) => s.id === widget.service_id) : null;
   return (
-    <def.Render
-      widget={widget}
-      service={service}
-      services={services}
-      health={health}
-      integrations={integrations}
-      integrationData={integrationData}
-      onRefresh={onRefresh}
-    />
+    <ErrorBoundary
+      resetKey={widget}
+      fallback={(e) => (
+        <div className="muted pad" title={String(e?.message ?? e)}>This widget failed to render ({widget.type})</div>
+      )}
+    >
+      <def.Render
+        widget={widget}
+        service={service}
+        services={services}
+        health={health}
+        integrations={integrations}
+        integrationData={integrationData}
+        onRefresh={onRefresh}
+      />
+    </ErrorBoundary>
   );
 }
