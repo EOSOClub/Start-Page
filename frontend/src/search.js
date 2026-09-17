@@ -61,8 +61,11 @@ export function collectLinks(widgets = []) {
     if (w.type === "link" && str(c?.url)) {
       out.push({ id: w.id, name: str(c.name), url: c.url, icon: str(c.icon), description: str(c.description) });
     } else if (w.type === "bookmarks" && Array.isArray(c?.links)) {
-      for (const l of c.links)
-        if (str(l?.url)) out.push({ id: `${w.id}-${l.id}`, name: str(l.name), url: l.url, icon: str(l.icon), description: str(c.title) });
+      c.links.forEach((l, i) => {
+        // Only a string/number id is safe to interpolate (an object can throw in ToPrimitive); else the index.
+        const lid = typeof l?.id === "string" || typeof l?.id === "number" ? l.id : i;
+        if (str(l?.url)) out.push({ id: `${w.id}-${lid}`, name: str(l.name), url: l.url, icon: str(l.icon), description: str(c.title) });
+      });
     }
   }
   return out;

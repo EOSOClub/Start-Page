@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Modal from "./Modal.jsx";
 import ConfigForm from "./ConfigForm.jsx";
-import { SNAP_MODES } from "./Canvas.jsx";
+import { SNAP_MODES, gridOptions } from "./Canvas.jsx";
 
 const FIELDS = [
   { key: "name", label: "Name", type: "text" },
@@ -16,16 +16,20 @@ const FIELDS = [
 ];
 
 export default function DashboardSettings({ dashboard, canDelete, onSave, onDelete, onClose }) {
-  const [value, setValue] = useState({
-    name: dashboard.name,
-    columns: dashboard.columns,
-    row_height: dashboard.row_height,
-    gap: dashboard.settings?.gap ?? 10,
-    snap: dashboard.settings?.snap || "cell",
-    show_grid: dashboard.settings?.show_grid ?? true,
-    background_image: dashboard.settings?.background_image || "",
-    background_dim: dashboard.settings?.background_dim ?? 40,
-    background_blur: dashboard.settings?.background_blur ?? 0,
+  const [value, setValue] = useState(() => {
+    // Seed from the normalized settings so bad stored values can't crash the form; Save then repairs them.
+    const o = gridOptions(dashboard);
+    return {
+      name: dashboard.name,
+      columns: dashboard.columns,
+      row_height: dashboard.row_height,
+      gap: o.gap,
+      snap: o.snap,
+      show_grid: o.showGrid,
+      background_image: o.background_image || "",
+      background_dim: o.background_dim ?? 40,
+      background_blur: o.background_blur ?? 0,
+    };
   });
   return (
     <Modal

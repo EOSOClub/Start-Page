@@ -28,14 +28,23 @@ const STACK_COLS = 4;
 /** Max rows a stacked card may claim in view mode; taller widgets scroll inside the card. */
 const STACK_MAX_ROWS = 4;
 
+/**
+ * The single read path for dashboard.settings, which is untyped server data. typeof checks only:
+ * Number()/String() throw on hostile objects. Page backgrounds are undefined when absent or invalid,
+ * so App's page → global → default fallback still applies.
+ */
 export function gridOptions(dashboard) {
   const s = dashboard.settings || {};
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
   return {
     cols: dashboard.columns || 24,
     rowHeight: dashboard.row_height || 40,
-    gap: s.gap ?? 10,
-    snap: s.snap || "cell",
-    showGrid: s.show_grid ?? true,
+    gap: num(s.gap) ?? 10,
+    snap: SNAP_MODES.some((m) => m.value === s.snap) ? s.snap : "cell",
+    showGrid: typeof s.show_grid === "boolean" ? s.show_grid : true,
+    background_image: typeof s.background_image === "string" ? s.background_image : undefined,
+    background_dim: num(s.background_dim),
+    background_blur: num(s.background_blur),
   };
 }
 

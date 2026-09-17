@@ -3,7 +3,7 @@ import { api } from "./api.js";
 import { AppContext } from "./context.js";
 import { useHistory } from "./history.js";
 import { collectLinks, hostOf, looksLikeUrl, normalizeUrl, tidyTitle } from "./search.js";
-import Canvas, { SNAP_MODES, nudgeStep } from "./components/Canvas.jsx";
+import Canvas, { SNAP_MODES, gridOptions, nudgeStep } from "./components/Canvas.jsx";
 import WidgetEditor from "./components/WidgetEditor.jsx";
 import ServiceManager from "./components/ServiceManager.jsx";
 import IntegrationManager from "./components/IntegrationManager.jsx";
@@ -204,9 +204,10 @@ export default function App() {
     document.title = settings.title || "Start Page";
   }, [settings]);
 
-  const pageBg = dashboard?.settings?.background_image || settings?.background_image || "";
-  const bgDim = dashboard?.settings?.background_dim ?? settings?.background_dim ?? 40;
-  const bgBlur = dashboard?.settings?.background_blur ?? settings?.background_blur ?? 0;
+  const page = dashboard ? gridOptions(dashboard) : {};
+  const pageBg = page.background_image || settings?.background_image || "";
+  const bgDim = page.background_dim ?? settings?.background_dim ?? 40;
+  const bgBlur = page.background_blur ?? settings?.background_blur ?? 0;
 
   // ----- mutations -----
   const run = async (fn) => {
@@ -665,7 +666,7 @@ export default function App() {
                 <select
                   className="snap-select"
                   title="Snap while dragging"
-                  value={dashboard.settings?.snap || "cell"}
+                  value={page.snap}
                   onChange={(e) => saveDashboard({ settings: { ...(dashboard.settings || {}), snap: e.target.value } })}
                 >
                   {SNAP_MODES.map((m) => <option key={m.value} value={m.value}>Snap: {m.label}</option>)}
