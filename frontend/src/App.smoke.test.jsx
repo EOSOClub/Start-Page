@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
 // App.jsx reads sp.cache.v1 / sp.dashboard at module scope, so the seed must be hoisted above the import.
 vi.hoisted(() => {
@@ -18,6 +18,8 @@ vi.hoisted(() => {
   );
   localStorage.setItem("sp.dashboard", "p1");
   globalThis.__smokePage = page;
+  globalThis.__smokeRev = { boot: "b1", rev: 0 };
+  globalThis.__smokeLoads = 0;
 });
 
 // One Proxy answers every api.* name: known loaders return seeded data, anything else resolves null.
@@ -25,7 +27,11 @@ vi.mock("./api.js", () => {
   const page = globalThis.__smokePage;
   const known = {
     listDashboards: () => Promise.resolve([{ id: "p1", name: "Home" }]),
-    getDashboard: () => Promise.resolve(page),
+    getDashboard: () => {
+      globalThis.__smokeLoads += 1;
+      return Promise.resolve(page);
+    },
+    revision: () => Promise.resolve(globalThis.__smokeRev),
     listServices: () => Promise.resolve([]),
     health: () => Promise.resolve({}),
     listIntegrations: () => Promise.resolve([]),
@@ -38,6 +44,7 @@ vi.mock("./api.js", () => {
 import App from "./App.jsx";
 
 describe("App smoke", () => {
+  afterEach(cleanup); // no vitest globals, so RTL doesn't unmount on its own
   it("mounts App -> Canvas -> grid with the seeded widgets", async () => {
     const { container } = render(<App />);
     screen.getByText("SMOKE-SURVIVOR");
@@ -49,4 +56,13 @@ describe("App smoke", () => {
     expect(container.querySelector("strong")?.textContent).toBe("bold");
     expect(container.textContent).not.toContain("failed to render");
   });
+
+  it("reloads the page when the external revision moves", async () => {
+    render(<App />);
+    await new Promise((r) => setTimeout(r, 300));
+    const before = globalThis.__smokeLoads;
+    globalThis.__smokeRev = { boot: "b1", rev: 1 };
+    await waitFor(() => screen.getByText(/Page updated outside this tab/), { timeout: 5000 });
+    expect(globalThis.__smokeLoads).toBeGreaterThan(before);
+  }, 10_000);
 });

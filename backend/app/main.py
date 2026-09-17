@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -79,6 +80,13 @@ if CORS_ORIGINS:
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_HEADER = "x-requested-by"
+APP_CLIENT = "startpage"  # the X-Requested-By value the frontend sends
+
+# Counts successful API writes made by anything other than the app itself (e.g. the
+# Claude MCP server). Open tabs poll /api/revision and reload when it moves; `boot`
+# changes on restart so a reset counter still reads as a change. In memory on purpose:
+# the container runs a single uvicorn worker.
+revision = {"rev": 0, "boot": uuid.uuid4().hex}
 
 
 @app.middleware("http")
@@ -89,12 +97,16 @@ async def csrf_guard(request: Request, call_next):
     POST to it. A custom header can't be sent cross-origin without a CORS preflight
     (which fails), and Sec-Fetch-Site flags cross-site requests in modern browsers.
     """
-    if request.method in UNSAFE_METHODS and request.url.path.startswith("/api/"):
+    unsafe = request.method in UNSAFE_METHODS and request.url.path.startswith("/api/")
+    if unsafe:
         cross_site = request.headers.get("sec-fetch-site") == "cross-site"
         origin = request.headers.get("origin")
         if (cross_site and origin not in CORS_ORIGINS) or CSRF_HEADER not in request.headers:
             return JSONResponse({"detail": "Cross-site request blocked"}, status_code=403)
-    return await call_next(request)
+    response = await call_next(request)
+    if unsafe and response.status_code < 400 and request.headers[CSRF_HEADER] != APP_CLIENT:
+        revision["rev"] += 1
+    return response
 
 
 @app.middleware("http")
@@ -120,6 +132,12 @@ async def on_integrity_error(request: Request, exc: IntegrityError):
 @app.exception_handler(OperationalError)
 async def on_operational_error(request: Request, exc: OperationalError):
     return JSONResponse({"detail": "Database busy — please retry"}, status_code=503)
+
+
+@app.get("/api/revision")
+def get_revision():
+    """Change marker for writes made outside the app (see `revision`)."""
+    return revision
 
 
 app.include_router(dashboards.router)

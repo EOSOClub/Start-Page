@@ -66,8 +66,19 @@ export function useHistory() {
     return entry;
   }, []);
 
+  // Forget everything: steps capture old server state, which an outside edit makes stale.
+  const clear = useCallback(() => {
+    if (busy.current) return false;
+    past.current = [];
+    future.current = [];
+    failed.current = null;
+    bump();
+    return true;
+  }, []);
+
   return {
     push,
+    clear,
     undo,
     redo,
     skip,

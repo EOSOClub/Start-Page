@@ -66,6 +66,8 @@ export const api = {
   // weather
   weather: (location, units, days) =>
     request("GET", `/weather?location=${encodeURIComponent(location)}&units=${units}&days=${days}`),
+  // changes made outside the app (e.g. by Claude through the MCP server)
+  revision: () => request("GET", "/revision"),
   // config
   exportConfig: () => request("GET", "/config/export"),
   importConfig: (bundle, replace) => request("POST", `/config/import?replace=${replace ? "true" : "false"}`, bundle),

@@ -278,3 +278,19 @@ def test_backup_same_label_same_second_distinct_files(monkeypatch, tmp_path):
     second = backups.create_backup("manual")
     assert first["name"] != second["name"]
     assert {p.name for p in tmp_path.glob("*.json")} == {first["name"], second["name"]}
+
+
+def test_revision_counts_only_successful_external_writes(client):
+    def rev():
+        return client.get("/api/revision").json()["rev"]
+
+    start = rev()
+    page = _create_dashboard(client)  # the app's own write
+    client.get(f"/api/dashboards/{page['id']}", headers={"x-requested-by": "claude"})  # a read
+    client.patch("/api/widgets/missing", json={"x": 1}, headers={"x-requested-by": "claude"})  # 404
+    assert rev() == start
+
+    res = client.post(f"/api/dashboards/{page['id']}/widgets", json={"type": "clock"}, headers={"x-requested-by": "claude"})
+    assert res.status_code == 201
+    assert rev() == start + 1
+    assert client.get("/api/revision").json()["boot"]

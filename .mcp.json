@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "startpage": {
+      "command": "uv",
+      "args": ["run", "--script", "mcp/startpage_mcp.py"],
+      "env": {
+        "STARTPAGE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

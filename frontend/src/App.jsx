@@ -16,6 +16,7 @@ import { WIDGET_TYPES, defaultConfig } from "./widgets/index.jsx";
 
 const HEALTH_POLL_MS = 10_000;
 const RELOAD_AFTER_HIDDEN_MS = 30_000; // refetch everything when a tab comes back after this long
+const REVISION_POLL_MS = 3000; // how quickly edits made outside the app (Claude via MCP) show up
 const TOAST_MS = 6000;
 
 /*
@@ -179,6 +180,37 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
+
+  // Pick up edits made outside the app (the backend only counts those, never our own writes).
+  const clearHistory = history.clear;
+  useEffect(() => {
+    let seen = null; // "boot:rev" last acted on
+    let running = false;
+    const check = async () => {
+      if (document.hidden || running) return;
+      running = true;
+      try {
+        const r = await api.revision();
+        if (!r) return;
+        const key = `${r.boot}:${r.rev}`;
+        if (seen === null) seen = key;
+        if (key === seen) return;
+        // Never swap the page out from under a drag or resize; the next tick retries.
+        if (document.querySelector(".react-draggable-dragging, .resizing")) return;
+        await reloadRef.current();
+        seen = key;
+        clearHistory();
+        setToast({ text: "Page updated outside this tab — undo history cleared." });
+      } catch {
+        // offline or mid-restart: try again next tick
+      } finally {
+        running = false;
+      }
+    };
+    check();
+    const t = setInterval(check, REVISION_POLL_MS);
+    return () => clearInterval(t);
+  }, [clearHistory]);
 
   // ----- keep the local cache fresh -----
   useEffect(() => {

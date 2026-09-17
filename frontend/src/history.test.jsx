@@ -167,4 +167,17 @@ describe("useHistory", () => {
     expect(result.current.redoLabel).toBe("B");
     expect(result.current.failedLabel).toBeUndefined();
   });
+
+  it("clear() empties both stacks and the failed step", async () => {
+    const { result } = renderHook(() => useHistory());
+    act(() => result.current.push(entry("A")));
+    act(() => result.current.push(entry("B", { undo: vi.fn(async () => { throw new Error("gone"); }) })));
+    await act(() => result.current.undo().catch(() => {}));
+    await act(() => result.current.undo().catch(() => {}));
+    expect(result.current.failedAction).toBe("undo");
+    act(() => result.current.clear());
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+    expect(result.current.failedAction).toBeUndefined();
+  });
 });

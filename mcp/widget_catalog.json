@@ -1,0 +1,1168 @@
+{
+  "link": {
+    "label": "Link",
+    "size": {
+      "w": 4,
+      "h": 2
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "name",
+        "label": "Name",
+        "type": "text"
+      },
+      {
+        "key": "url",
+        "label": "URL",
+        "type": "text",
+        "placeholder": "http://192.168.1.20:8080"
+      },
+      {
+        "key": "icon",
+        "label": "Icon",
+        "type": "icon",
+        "value": "emoji, image URL, or a dashboard-icons name (see search_icons)"
+      },
+      {
+        "key": "description",
+        "label": "Description",
+        "type": "text"
+      },
+      {
+        "key": "color",
+        "label": "Accent color",
+        "type": "color",
+        "value": "hex string such as \"#6c8cff\", or \"\""
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto (adapts to widget size)"
+          },
+          {
+            "value": "row",
+            "label": "Icon beside text"
+          },
+          {
+            "value": "stack",
+            "label": "Icon above text"
+          },
+          {
+            "value": "icon",
+            "label": "Icon only"
+          },
+          {
+            "value": "text",
+            "label": "Text only"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "align",
+        "label": "Alignment",
+        "type": "select",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto (rows left, stacked centred)"
+          },
+          {
+            "value": "center",
+            "label": "Centred"
+          },
+          {
+            "value": "start",
+            "label": "Left"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "newTab",
+        "label": "Open in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "bookmarks": {
+    "label": "Bookmarks",
+    "size": {
+      "w": 8,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "links",
+        "label": "Links",
+        "type": "links",
+        "value": "array of {id, name, url, icon}; id is any unique string"
+      },
+      {
+        "key": "display",
+        "label": "Display",
+        "type": "select",
+        "options": [
+          {
+            "value": "list",
+            "label": "List (icon beside name)"
+          },
+          {
+            "value": "tiles",
+            "label": "Tiles (icon above name)"
+          },
+          {
+            "value": "icons",
+            "label": "Icons only"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "columns",
+        "label": "Columns",
+        "type": "number",
+        "placeholder": "auto",
+        "min": 1,
+        "max": 12,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "search": {
+    "label": "Search bar",
+    "size": {
+      "w": 12,
+      "h": 2
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "engine",
+        "label": "Search engine",
+        "type": "select",
+        "options": [
+          {
+            "value": "",
+            "label": "Default (from Settings)"
+          },
+          {
+            "value": "duckduckgo",
+            "label": "DuckDuckGo"
+          },
+          {
+            "value": "google",
+            "label": "Google"
+          },
+          {
+            "value": "bing",
+            "label": "Bing"
+          },
+          {
+            "value": "brave",
+            "label": "Brave Search"
+          },
+          {
+            "value": "startpage",
+            "label": "Startpage"
+          },
+          {
+            "value": "kagi",
+            "label": "Kagi"
+          },
+          {
+            "value": "custom",
+            "label": "Custom URL…"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "customUrl",
+        "label": "Custom search URL",
+        "type": "text",
+        "placeholder": "https://example.com/search?q={q}",
+        "conditional": true
+      },
+      {
+        "key": "placeholder",
+        "label": "Placeholder",
+        "type": "text",
+        "placeholder": "Search … or type a URL"
+      },
+      {
+        "key": "suggestions",
+        "label": "Suggest matching links, services and pages",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "autofocus",
+        "label": "Focus when the page opens",
+        "type": "checkbox",
+        "help": "Works when this page is your homepage. On a new tab most browsers keep focus in the address bar — press / to jump here.",
+        "value": "boolean"
+      },
+      {
+        "key": "newTab",
+        "label": "Open results in a new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "greeting": {
+    "label": "Greeting",
+    "size": {
+      "w": 12,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "name",
+        "label": "Your name",
+        "type": "text",
+        "placeholder": "(optional)"
+      },
+      {
+        "key": "showTime",
+        "label": "Show time",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "h24",
+        "label": "24-hour clock",
+        "type": "checkbox",
+        "conditional": true,
+        "value": "boolean"
+      },
+      {
+        "key": "showDate",
+        "label": "Show date",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "align",
+        "label": "Alignment",
+        "type": "select",
+        "options": [
+          {
+            "value": "center",
+            "label": "Centred"
+          },
+          {
+            "value": "left",
+            "label": "Left"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "clock": {
+    "label": "Clock",
+    "size": {
+      "w": 4,
+      "h": 2
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "timezone",
+        "label": "Timezone",
+        "type": "text",
+        "placeholder": "(local)",
+        "help": "IANA timezone name, e.g. America/New_York or Europe/London. Abbreviations like EST/PST are not valid. Empty = your local time."
+      },
+      {
+        "key": "showSeconds",
+        "label": "Show seconds",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "h24",
+        "label": "24-hour",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "showDate",
+        "label": "Show date",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "label",
+        "label": "Label",
+        "type": "text"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "weather": {
+    "label": "Weather",
+    "size": {
+      "w": 8,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "location",
+        "label": "Location",
+        "type": "text",
+        "placeholder": "Lisbon, PT",
+        "help": "A city name (add a country code to disambiguate), or coordinates like 38.72, -9.14. Data from Open-Meteo."
+      },
+      {
+        "key": "label",
+        "label": "Display name",
+        "type": "text",
+        "placeholder": "(use the found place name)"
+      },
+      {
+        "key": "units",
+        "label": "Units",
+        "type": "select",
+        "options": [
+          {
+            "value": "metric",
+            "label": "°C, km/h"
+          },
+          {
+            "value": "imperial",
+            "label": "°F, mph"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "days",
+        "label": "Forecast",
+        "type": "select",
+        "options": [
+          {
+            "value": 3,
+            "label": "3 days"
+          },
+          {
+            "value": 5,
+            "label": "5 days"
+          },
+          {
+            "value": 7,
+            "label": "7 days"
+          },
+          {
+            "value": 0,
+            "label": "None"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "details",
+        "label": "Show feels-like, humidity and wind",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "notes": {
+    "label": "Notes / to-do",
+    "size": {
+      "w": 6,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "mode",
+        "label": "Kind",
+        "type": "select",
+        "options": [
+          {
+            "value": "note",
+            "label": "Free-text note"
+          },
+          {
+            "value": "todo",
+            "label": "To-do list"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "placeholder",
+        "label": "Placeholder",
+        "type": "text",
+        "conditional": true
+      }
+    ]
+  },
+  "service": {
+    "label": "Service",
+    "size": {
+      "w": 4,
+      "h": 2
+    },
+    "usesService": true,
+    "fields": [
+      {
+        "key": "label",
+        "label": "Override name",
+        "type": "text",
+        "placeholder": "(use service name)"
+      },
+      {
+        "key": "showUrl",
+        "label": "Show address",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "showLatency",
+        "label": "Show latency",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto (adapts to widget size)"
+          },
+          {
+            "value": "row",
+            "label": "Icon beside text"
+          },
+          {
+            "value": "stack",
+            "label": "Icon above text"
+          },
+          {
+            "value": "icon",
+            "label": "Icon only"
+          },
+          {
+            "value": "text",
+            "label": "Text only"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "align",
+        "label": "Alignment",
+        "type": "select",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto (rows left, stacked centred)"
+          },
+          {
+            "value": "center",
+            "label": "Centred"
+          },
+          {
+            "value": "start",
+            "label": "Left"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "newTab",
+        "label": "Open in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "group": {
+    "label": "Group",
+    "size": {
+      "w": 8,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "mode",
+        "label": "Members",
+        "type": "select",
+        "options": [
+          {
+            "value": "category",
+            "label": "All services in a category"
+          },
+          {
+            "value": "ids",
+            "label": "Pick services"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "category",
+        "label": "Category",
+        "type": "category",
+        "conditional": true,
+        "value": "a service category name"
+      },
+      {
+        "key": "service_ids",
+        "label": "Services",
+        "type": "services",
+        "conditional": true,
+        "value": "array of service ids"
+      },
+      {
+        "key": "columns",
+        "label": "Columns",
+        "type": "number",
+        "placeholder": "auto",
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "text": {
+    "label": "Text / Markdown",
+    "size": {
+      "w": 6,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "content",
+        "label": "Markdown",
+        "type": "textarea"
+      }
+    ]
+  },
+  "iframe": {
+    "label": "Iframe",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "url",
+        "label": "URL",
+        "type": "text"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      }
+    ]
+  },
+  "image": {
+    "label": "Image",
+    "size": {
+      "w": 4,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "url",
+        "label": "Image URL",
+        "type": "text"
+      },
+      {
+        "key": "link",
+        "label": "Link to",
+        "type": "text"
+      },
+      {
+        "key": "fit",
+        "label": "Fit",
+        "type": "select",
+        "options": [
+          {
+            "value": "cover",
+            "label": "Cover"
+          },
+          {
+            "value": "contain",
+            "label": "Contain"
+          }
+        ],
+        "value": "one of options[].value"
+      }
+    ]
+  },
+  "service_table": {
+    "label": "Service table",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "category",
+        "label": "Filter by category",
+        "type": "category",
+        "placeholder": "(all)",
+        "value": "a service category name"
+      }
+    ]
+  },
+  "topology": {
+    "label": "Topology (dependencies)",
+    "size": {
+      "w": 6,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "root",
+        "label": "Root service",
+        "type": "service",
+        "placeholder": "(all roots)",
+        "value": "a service id"
+      },
+      {
+        "key": "newTab",
+        "label": "Open in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "docker": {
+    "label": "Docker",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Docker integration",
+        "type": "integration",
+        "integrationType": "docker",
+        "value": "an integration id whose type matches integrationType"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(host name)"
+      },
+      {
+        "key": "project",
+        "label": "Filter by compose project",
+        "type": "text",
+        "placeholder": "(all)"
+      },
+      {
+        "key": "compact",
+        "label": "Compact (counts only)",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "allowActions",
+        "label": "Show start/stop/restart buttons",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "uptime_kuma": {
+    "label": "Uptime Kuma",
+    "size": {
+      "w": 6,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Uptime Kuma integration",
+        "type": "integration",
+        "integrationType": "uptime_kuma",
+        "value": "an integration id whose type matches integrationType"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(status page title)"
+      },
+      {
+        "key": "group",
+        "label": "Filter by group",
+        "type": "text",
+        "placeholder": "(all)"
+      },
+      {
+        "key": "showHistory",
+        "label": "Show heartbeat bars",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "status": {
+    "label": "Custom status (JSON)",
+    "size": {
+      "w": 4,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "JSON integration",
+        "type": "integration",
+        "integrationType": "json",
+        "value": "an integration id whose type matches integrationType"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "icon",
+        "label": "Icon",
+        "type": "icon",
+        "value": "emoji, image URL, or a dashboard-icons name (see search_icons)"
+      },
+      {
+        "key": "link",
+        "label": "Link to",
+        "type": "text"
+      },
+      {
+        "key": "fields",
+        "label": "Fields (one per line: Label = json.path)",
+        "type": "textarea",
+        "placeholder": "Players = players.online\nTPS = tps",
+        "help": "Dot-separated path into the JSON response. Leave path empty to show the whole response."
+      },
+      {
+        "key": "onlineIf",
+        "label": "Online if path is truthy",
+        "type": "text",
+        "placeholder": "e.g. online"
+      }
+    ]
+  },
+  "system": {
+    "label": "System stats",
+    "size": {
+      "w": 4,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Host integration",
+        "type": "integration",
+        "integrationType": "host",
+        "value": "an integration id whose type matches integrationType"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(hostname)"
+      }
+    ]
+  },
+  "rss": {
+    "label": "RSS / Atom",
+    "size": {
+      "w": 6,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "RSS/Atom integration",
+        "type": "integration",
+        "integrationType": "rss",
+        "value": "an integration id whose type matches integrationType"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(feed title)"
+      },
+      {
+        "key": "max_items",
+        "label": "Max items",
+        "type": "number",
+        "default": 10,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "show_description",
+        "label": "Show description",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "transparent",
+        "label": "No card background",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "divider": {
+    "label": "Divider line",
+    "size": {
+      "w": 6,
+      "h": 1
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "orientation",
+        "label": "Orientation",
+        "type": "select",
+        "options": [
+          {
+            "value": "auto",
+            "label": "Auto (follows widget shape)"
+          },
+          {
+            "value": "h",
+            "label": "Horizontal"
+          },
+          {
+            "value": "v",
+            "label": "Vertical"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "style",
+        "label": "Line style",
+        "type": "select",
+        "options": [
+          {
+            "value": "solid",
+            "label": "Solid"
+          },
+          {
+            "value": "dashed",
+            "label": "Dashed"
+          },
+          {
+            "value": "dotted",
+            "label": "Dotted"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "thickness",
+        "label": "Thickness (px)",
+        "type": "number",
+        "placeholder": "2",
+        "min": 1,
+        "max": 16,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "color",
+        "value": "hex string such as \"#6c8cff\", or \"\""
+      },
+      {
+        "key": "caps",
+        "label": "End caps",
+        "type": "select",
+        "options": [
+          {
+            "value": "none",
+            "label": "None"
+          },
+          {
+            "value": "dots",
+            "label": "Dots"
+          },
+          {
+            "value": "arrow",
+            "label": "Arrow (end)"
+          },
+          {
+            "value": "arrows",
+            "label": "Arrows (both ends)"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "label",
+        "label": "Label",
+        "type": "text",
+        "help": "Shown in the middle of horizontal lines."
+      }
+    ]
+  },
+  "heading": {
+    "label": "Heading",
+    "size": {
+      "w": 8,
+      "h": 1
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "text",
+        "label": "Text",
+        "type": "text"
+      },
+      {
+        "key": "size",
+        "label": "Size",
+        "type": "select",
+        "options": [
+          {
+            "value": "s",
+            "label": "Small"
+          },
+          {
+            "value": "m",
+            "label": "Medium"
+          },
+          {
+            "value": "l",
+            "label": "Large"
+          },
+          {
+            "value": "xl",
+            "label": "Extra large"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "align",
+        "label": "Alignment",
+        "type": "select",
+        "options": [
+          {
+            "value": "left",
+            "label": "Left"
+          },
+          {
+            "value": "center",
+            "label": "Centred"
+          },
+          {
+            "value": "right",
+            "label": "Right"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "color",
+        "label": "Color",
+        "type": "color",
+        "value": "hex string such as \"#6c8cff\", or \"\""
+      },
+      {
+        "key": "uppercase",
+        "label": "Uppercase",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "bar",
+        "label": "Accent bar underneath",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "box": {
+    "label": "Box / frame",
+    "size": {
+      "w": 10,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "style",
+        "label": "Border style",
+        "type": "select",
+        "options": [
+          {
+            "value": "solid",
+            "label": "Solid"
+          },
+          {
+            "value": "dashed",
+            "label": "Dashed"
+          },
+          {
+            "value": "dotted",
+            "label": "Dotted"
+          },
+          {
+            "value": "none",
+            "label": "None"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "color",
+        "label": "Border color",
+        "type": "color",
+        "value": "hex string such as \"#6c8cff\", or \"\""
+      },
+      {
+        "key": "borderWidth",
+        "label": "Border width (px)",
+        "type": "number",
+        "placeholder": "1",
+        "min": 0,
+        "max": 12,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "fill",
+        "label": "Fill color",
+        "type": "color",
+        "value": "hex string such as \"#6c8cff\", or \"\""
+      },
+      {
+        "key": "fillOpacity",
+        "label": "Fill opacity",
+        "type": "range",
+        "min": 0,
+        "max": 100,
+        "unit": "%",
+        "value": "number"
+      },
+      {
+        "key": "radius",
+        "label": "Corner radius (px)",
+        "type": "number",
+        "placeholder": "10",
+        "min": 0,
+        "max": 40,
+        "value": "number (null = unset)"
+      }
+    ]
+  }
+}

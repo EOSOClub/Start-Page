@@ -74,6 +74,23 @@ docker compose up -d --build      # http://localhost:8000, data persisted in ./d
    bar adds pages.
 6. **Import / export** to back up or restore `startpage.json`.
 
+## Build your page with Claude Code
+
+With the app running, open [Claude Code](https://claude.com/claude-code) in this folder and
+describe what you want, for example: *"add a clock, London weather, and a row of links to my
+Jellyfin and Home Assistant services"*.
+
+- The repo's `.mcp.json` registers the `startpage` MCP server (`mcp/startpage_mcp.py`). Approve it
+  when Claude Code asks on first launch.
+- The server needs [uv](https://docs.astral.sh/uv/), which installs its dependencies on first run.
+- It talks to `http://localhost:8000` (change `STARTPAGE_URL` in `.mcp.json` for another host).
+  In development that's the backend started by `dev.ps1`.
+- Claude can read pages, add, configure, move and delete widgets, manage pages, services and
+  global settings, and take backups.
+- Open tabs show its changes within about 3 s. Your own undo history is cleared at that point,
+  because it would otherwise undo against stale state.
+- Restore from **Backups** if you don't like a result. Claude takes a backup before destructive changes.
+
 ## Integrations
 
 Edit → **Integrations** → New:
@@ -122,7 +139,9 @@ Interactive docs at `/docs`. Key routes:
 | `GET /api/favicon?url=`, `GET /api/sitemeta?url=` | cached site icon / page title |
 | `GET /api/weather?location=&units=&days=` | Open-Meteo current weather + forecast (15 min cache) |
 
-All `POST/PUT/PATCH/DELETE` calls need the header `X-Requested-By: startpage` (e.g. for scripts using `curl`).
+All `POST/PUT/PATCH/DELETE` calls need an `X-Requested-By` header. The app itself sends
+`startpage`. Scripts should send any other value (e.g. `X-Requested-By: script`): writes
+from other clients bump `GET /api/revision`, and open tabs reload within about 3 s when it changes.
 
 ## Adding a widget type
 
@@ -132,6 +151,9 @@ default `size`, a `fields` schema (drives the settings form automatically) and a
 Fields may declare a `default` (seeded into new widgets). Renderers can call `useApp()`
 (`src/context.js`) for settings, services, links, `goToPage` and `updateWidgetConfig`
 (for widgets that edit themselves, like Notes).
+
+Then run `npm run catalog` in `frontend/` to refresh `mcp/widget_catalog.json`, the copy of the
+registry that Claude reads. `npm run test` fails until the copy matches.
 
 ## Data
 
