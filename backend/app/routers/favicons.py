@@ -12,9 +12,10 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 
+from .. import auth
 from ..database import DATA_DIR
 
 log = logging.getLogger("startpage.favicons")
@@ -175,8 +176,9 @@ async def _fetch(url: str, origin: str, titles: dict | None = None) -> dict:
     return meta
 
 
-async def _meta(url: str, want_title: bool = False) -> tuple[dict, str, str]:
-    """Cached (meta, cache key, normalized url). `want_title` refetches when this exact page's title isn't cached."""
+async def _meta(url: str, want_title: bool = False, cache_only: bool = False) -> tuple[dict, str, str]:
+    """Cached (meta, cache key, normalized url). `want_title` refetches when this exact page's title isn't cached.
+    `cache_only` (guests) never makes the server fetch anything: any cached entry is used, else 404."""
     url, origin = _normalize(url)
     key = hashlib.sha1(origin.encode()).hexdigest()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -189,6 +191,8 @@ async def _meta(url: str, want_title: bool = False) -> tuple[dict, str, str]:
                 meta = json.loads(meta_path.read_text())
             except ValueError:  # truncated by a crash mid-write: treat as a miss
                 meta = None
+            if isinstance(meta, dict) and cache_only:
+                return meta, key, url
             if isinstance(meta, dict):
                 ttl = ICON_TTL if meta.get("type") else MISS_TTL
                 fresh = time.time() - meta.get("fetched", 0) < ttl
@@ -196,23 +200,37 @@ async def _meta(url: str, want_title: bool = False) -> tuple[dict, str, str]:
                     titles = meta["titles"] if fresh else {}
                 if fresh and (not want_title or url in titles):
                     return meta, key, url
+        if cache_only:
+            raise HTTPException(404, "No icon")
         return await _fetch(url, origin, titles), key, url
 
 
+IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/x-icon", "image/vnd.microsoft.icon",
+               "image/avif", "image/bmp", "image/svg+xml"}
+
+
 @router.get("/favicon")
-async def favicon(url: str = Query(...)):
-    meta, key, _ = await _meta(url)
+async def favicon(request: Request, url: str = Query(...)):
+    meta, key, _ = await _meta(url, cache_only=auth.is_guest(request))
     img = CACHE_DIR / f"{key}.img"
     if not meta.get("type") or not img.is_file():
         raise HTTPException(404, "No icon")
-    headers = {"Cache-Control": "public, max-age=86400"}
-    if meta["type"] == "image/svg+xml":
+    # This route is same-origin, so what it serves must never be able to run as a page: only these image
+    # types are served as such; anything else (a stored `text/html`, say) becomes an opaque download.
+    ctype = str(meta["type"]).split(";")[0].strip().lower()
+    headers = {"Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff"}
+    if ctype not in IMAGE_TYPES:
+        ctype = "application/octet-stream"
+        headers["Content-Disposition"] = "attachment"
+    if ctype == "image/svg+xml":
         # An SVG opened directly could run script; lock it down.
-        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
-    return Response(img.read_bytes(), media_type=meta["type"], headers=headers)
+        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+    return Response(img.read_bytes(), media_type=ctype, headers=headers)
 
 
 @router.get("/sitemeta")
-async def sitemeta(url: str = Query(...)):
+async def sitemeta(request: Request, url: str = Query(...)):
+    if auth.is_guest(request):  # would make the server fetch an arbitrary URL
+        raise HTTPException(401, "Authentication required")
     meta, _, url = await _meta(url, want_title=True)
     return {"title": meta.get("titles", {}).get(url, meta.get("title", "")), "has_icon": bool(meta.get("type"))}

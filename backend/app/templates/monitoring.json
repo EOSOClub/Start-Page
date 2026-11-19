@@ -1,0 +1,95 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "monitoring",
+  "title": "Monitoring",
+  "description": "Which of your services are up: uptime bars, the incident log, a table with uptime and the dependency map. Uses the service registry; needs no integrations.",
+  "tags": [
+    "monitoring",
+    "services"
+  ],
+  "requires": [],
+  "name": "Monitoring",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Service health",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "uptime",
+      "x": 0,
+      "y": 1,
+      "w": 14,
+      "h": 6,
+      "config": {
+        "title": "Uptime, last 24 hours"
+      }
+    },
+    {
+      "type": "incidents",
+      "x": 14,
+      "y": 1,
+      "w": 10,
+      "h": 6,
+      "config": {
+        "title": "Recent incidents",
+        "limit": 10
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 7,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "All services",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "service_table",
+      "x": 0,
+      "y": 8,
+      "w": 14,
+      "h": 8,
+      "config": {
+        "title": "",
+        "show_uptime": true
+      }
+    },
+    {
+      "type": "topology",
+      "x": 14,
+      "y": 8,
+      "w": 10,
+      "h": 8,
+      "config": {
+        "title": "Dependencies",
+        "newTab": false
+      }
+    }
+  ],
+  "services": [],
+  "integrations": []
+}

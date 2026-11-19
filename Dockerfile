@@ -17,4 +17,6 @@ COPY --from=web /app/backend/static ./static
 ENV STARTPAGE_DATA_DIR=/data
 VOLUME ["/data"]
 EXPOSE 8471
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8471"]
+# --no-proxy-headers: uvicorn must not rewrite the client address from X-Forwarded-For;
+# app/auth.py is the only place that header is believed (from STARTPAGE_TRUSTED_PROXIES).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8471", "--no-proxy-headers"]

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "catalog": "node scripts/catalog.mjs"
+    "catalog": "node scripts/catalog.mjs",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "dompurify": "^3.4.15",

@@ -1,6 +1,7 @@
 {
   "link": {
     "label": "Link",
+    "group": "Basics",
     "size": {
       "w": 4,
       "h": 2
@@ -93,6 +94,7 @@
   },
   "bookmarks": {
     "label": "Bookmarks",
+    "group": "Basics",
     "size": {
       "w": 8,
       "h": 5
@@ -155,6 +157,7 @@
   },
   "search": {
     "label": "Search bar",
+    "group": "Basics",
     "size": {
       "w": 12,
       "h": 2
@@ -250,6 +253,7 @@
   },
   "greeting": {
     "label": "Greeting",
+    "group": "Basics",
     "size": {
       "w": 12,
       "h": 4
@@ -310,6 +314,7 @@
   },
   "clock": {
     "label": "Clock",
+    "group": "Basics",
     "size": {
       "w": 4,
       "h": 2
@@ -356,6 +361,7 @@
   },
   "weather": {
     "label": "Weather",
+    "group": "Basics",
     "size": {
       "w": 8,
       "h": 4
@@ -432,6 +438,7 @@
   },
   "notes": {
     "label": "Notes / to-do",
+    "group": "Basics",
     "size": {
       "w": 6,
       "h": 6
@@ -469,6 +476,7 @@
   },
   "service": {
     "label": "Service",
+    "group": "Services",
     "size": {
       "w": 4,
       "h": 2
@@ -490,6 +498,18 @@
       {
         "key": "showLatency",
         "label": "Show latency",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "show_uptime",
+        "label": "Show 24 h uptime",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show latency sparkline (24 h)",
         "type": "checkbox",
         "value": "boolean"
       },
@@ -551,6 +571,7 @@
   },
   "group": {
     "label": "Group",
+    "group": "Services",
     "size": {
       "w": 8,
       "h": 4
@@ -609,6 +630,7 @@
   },
   "text": {
     "label": "Text / Markdown",
+    "group": "Basics",
     "size": {
       "w": 6,
       "h": 4
@@ -624,6 +646,7 @@
   },
   "iframe": {
     "label": "Iframe",
+    "group": "Basics",
     "size": {
       "w": 8,
       "h": 6
@@ -644,6 +667,7 @@
   },
   "image": {
     "label": "Image",
+    "group": "Basics",
     "size": {
       "w": 4,
       "h": 4
@@ -680,6 +704,7 @@
   },
   "service_table": {
     "label": "Service table",
+    "group": "Services",
     "size": {
       "w": 8,
       "h": 6
@@ -697,11 +722,18 @@
         "type": "category",
         "placeholder": "(all)",
         "value": "a service category name"
+      },
+      {
+        "key": "show_uptime",
+        "label": "Show 24 h uptime",
+        "type": "checkbox",
+        "value": "boolean"
       }
     ]
   },
   "topology": {
     "label": "Topology (dependencies)",
+    "group": "Services",
     "size": {
       "w": 6,
       "h": 6
@@ -730,6 +762,7 @@
   },
   "docker": {
     "label": "Docker",
+    "group": "Integrations",
     "size": {
       "w": 8,
       "h": 6
@@ -741,7 +774,7 @@
         "label": "Docker integration",
         "type": "integration",
         "integrationType": "docker",
-        "value": "an integration id whose type matches integrationType"
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
       },
       {
         "key": "title",
@@ -771,6 +804,7 @@
   },
   "uptime_kuma": {
     "label": "Uptime Kuma",
+    "group": "Integrations",
     "size": {
       "w": 6,
       "h": 5
@@ -782,7 +816,7 @@
         "label": "Uptime Kuma integration",
         "type": "integration",
         "integrationType": "uptime_kuma",
-        "value": "an integration id whose type matches integrationType"
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
       },
       {
         "key": "title",
@@ -804,8 +838,63 @@
       }
     ]
   },
+  "uptime": {
+    "label": "Uptime",
+    "group": "Services",
+    "size": {
+      "w": 6,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "service_ids",
+        "label": "Services",
+        "type": "services",
+        "help": "Leave empty to use the category below.",
+        "value": "array of service ids"
+      },
+      {
+        "key": "category",
+        "label": "Category",
+        "type": "category",
+        "placeholder": "(all)",
+        "value": "a service category name"
+      }
+    ]
+  },
+  "incidents": {
+    "label": "Incidents",
+    "group": "Services",
+    "size": {
+      "w": 6,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "limit",
+        "label": "Number of incidents",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "value": "number (null = unset)"
+      }
+    ]
+  },
   "status": {
     "label": "Custom status (JSON)",
+    "group": "Integrations",
     "size": {
       "w": 4,
       "h": 3
@@ -817,7 +906,7 @@
         "label": "JSON integration",
         "type": "integration",
         "integrationType": "json",
-        "value": "an integration id whose type matches integrationType"
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
       },
       {
         "key": "title",
@@ -852,6 +941,7 @@
   },
   "system": {
     "label": "System stats",
+    "group": "Integrations",
     "size": {
       "w": 4,
       "h": 3
@@ -863,7 +953,7 @@
         "label": "Host integration",
         "type": "integration",
         "integrationType": "host",
-        "value": "an integration id whose type matches integrationType"
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
       },
       {
         "key": "title",
@@ -875,6 +965,7 @@
   },
   "rss": {
     "label": "RSS / Atom",
+    "group": "Integrations",
     "size": {
       "w": 6,
       "h": 5
@@ -886,7 +977,7 @@
         "label": "RSS/Atom integration",
         "type": "integration",
         "integrationType": "rss",
-        "value": "an integration id whose type matches integrationType"
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
       },
       {
         "key": "title",
@@ -921,8 +1012,1642 @@
       }
     ]
   },
+  "integration_stats": {
+    "label": "Integration stats",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Integration (any that provides stats)",
+        "type": "integration",
+        "capability": "stats",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "integration_list": {
+    "label": "Integration list",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Integration (any that provides items)",
+        "type": "integration",
+        "capability": "items",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "limit",
+        "label": "Max rows",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "pihole": {
+    "label": "Pi-hole",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Pi-hole integration",
+        "type": "integration",
+        "integrationType": "pihole",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "Pi-hole"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "default": "queries, blocked, percent_blocked, domains",
+        "help": "Keys: queries, blocked, percent_blocked, domains, status, clients.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      }
+    ]
+  },
+  "prometheus": {
+    "label": "Prometheus",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Prometheus integration",
+        "type": "integration",
+        "integrationType": "prometheus",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "sonarr": {
+    "label": "Sonarr",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Sonarr integration",
+        "type": "integration",
+        "integrationType": "sonarr",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "radarr": {
+    "label": "Radarr",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Radarr integration",
+        "type": "integration",
+        "integrationType": "radarr",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "qbittorrent": {
+    "label": "qBittorrent",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "qBittorrent integration",
+        "type": "integration",
+        "integrationType": "qbittorrent",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "download, upload, downloading, seeding",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "sabnzbd": {
+    "label": "SABnzbd",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "SABnzbd integration",
+        "type": "integration",
+        "integrationType": "sabnzbd",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "speed, left, timeleft, queue",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "jellyfin": {
+    "label": "Jellyfin",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Jellyfin integration",
+        "type": "integration",
+        "integrationType": "jellyfin",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "streams, transcodes",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "plex": {
+    "label": "Plex",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Plex integration",
+        "type": "integration",
+        "integrationType": "plex",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "streams, transcodes",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "proxmox": {
+    "label": "Proxmox",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 7
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Proxmox integration",
+        "type": "integration",
+        "integrationType": "proxmox",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 12,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "show_actions",
+        "label": "Show start / shut down / restart menus on guests",
+        "type": "checkbox",
+        "help": "Only works while the integration's list shows VMs and containers. Every action asks for confirmation. Not shown to view-only guests.",
+        "value": "boolean"
+      }
+    ]
+  },
+  "truenas": {
+    "label": "TrueNAS",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "TrueNAS integration",
+        "type": "integration",
+        "integrationType": "truenas",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "portainer": {
+    "label": "Portainer",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Portainer integration",
+        "type": "integration",
+        "integrationType": "portainer",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "endpoints, running, stopped, unhealthy",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 12,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "show_actions",
+        "label": "Show start / stop / restart menus on containers",
+        "type": "checkbox",
+        "help": "Only works while the integration's list shows containers (it uses the integration's Environment ID, or the first online environment). Every action asks for confirmation.",
+        "value": "boolean"
+      }
+    ]
+  },
+  "unraid": {
+    "label": "Unraid",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Unraid integration",
+        "type": "integration",
+        "integrationType": "unraid",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "both",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "array, array_used, parity, disk_errors, cpu, memory",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "adguard": {
+    "label": "AdGuard Home",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "AdGuard Home integration",
+        "type": "integration",
+        "integrationType": "adguard",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "stats",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "queries, blocked, percent_blocked, avg_time",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "unifi": {
+    "label": "UniFi",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "UniFi integration",
+        "type": "integration",
+        "integrationType": "unifi",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "show",
+        "label": "Show",
+        "type": "select",
+        "options": [
+          {
+            "value": "both",
+            "label": "Stats and list"
+          },
+          {
+            "value": "stats",
+            "label": "Stats only"
+          },
+          {
+            "value": "items",
+            "label": "List only"
+          }
+        ],
+        "default": "stats",
+        "value": "one of options[].value"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "wan_status, clients, devices_offline, wan_down, wan_up, latency",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Stats layout (when shown without the list)",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      },
+      {
+        "key": "limit",
+        "label": "Max list rows",
+        "type": "number",
+        "default": 8,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "newTab",
+        "label": "Open links in new tab",
+        "type": "checkbox",
+        "value": "boolean"
+      }
+    ]
+  },
+  "speedtest_tracker": {
+    "label": "Speedtest Tracker",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Speedtest Tracker integration",
+        "type": "integration",
+        "integrationType": "speedtest_tracker",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "stat_keys",
+        "label": "Stats to show (keys, in order)",
+        "type": "statkeys",
+        "placeholder": "(all)",
+        "help": "Comma-separated stat keys, e.g. queries, blocked. Leave empty to show every stat.",
+        "default": "download, upload, ping",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "default": "tiles",
+        "options": [
+          {
+            "value": "tiles",
+            "label": "Tiles (scale to the widget)"
+          },
+          {
+            "value": "rows",
+            "label": "Rows"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparklines (when a stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "home_assistant": {
+    "label": "Home Assistant",
+    "group": "Integrations",
+    "size": {
+      "w": 8,
+      "h": 5
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Home Assistant integration",
+        "type": "integration",
+        "integrationType": "home_assistant",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(integration name)"
+      },
+      {
+        "key": "layout",
+        "label": "Layout",
+        "type": "select",
+        "default": "grid",
+        "options": [
+          {
+            "value": "grid",
+            "label": "Grid of cards"
+          },
+          {
+            "value": "list",
+            "label": "List"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "columns",
+        "label": "Columns (grid)",
+        "type": "number",
+        "min": 1,
+        "max": 12,
+        "placeholder": "auto",
+        "conditional": true,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "compact",
+        "label": "Compact",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "entity_ids",
+        "label": "Only these entities (optional, in this order)",
+        "type": "textarea",
+        "rows": 3,
+        "placeholder": "light.kitchen\nsensor.outside_temperature",
+        "help": "Entity ids, one per line or comma separated, from the integration's entity list. Empty = all of them."
+      }
+    ]
+  },
+  "calendar": {
+    "label": "Calendar agenda",
+    "group": "Integrations",
+    "size": {
+      "w": 6,
+      "h": 6
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_ids",
+        "label": "Calendar feeds (ICS integrations)",
+        "type": "integration",
+        "integrationType": "ics",
+        "multiple": true,
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(feed name)"
+      },
+      {
+        "key": "days",
+        "label": "Days to show",
+        "type": "number",
+        "default": 7,
+        "min": 1,
+        "max": 60,
+        "help": "The feed itself only looks ahead as far as its own “days ahead” setting.",
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "limit",
+        "label": "Max events",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "show_location",
+        "label": "Show location",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "gauge": {
+    "label": "Gauge",
+    "group": "Integrations",
+    "size": {
+      "w": 4,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "integration_id",
+        "label": "Integration (any that provides stats)",
+        "type": "integration",
+        "capability": "stats",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "stat_key",
+        "label": "Stat",
+        "type": "statkeys",
+        "multiple": false,
+        "placeholder": "cpu",
+        "help": "One stat key. Pick one of the chips once an integration is selected and has data.",
+        "value": "text: stat keys of the selected integration (see get_overview / its data), comma separated; one key when multiple is false"
+      },
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text",
+        "placeholder": "(stat name)"
+      },
+      {
+        "key": "style",
+        "label": "Style",
+        "type": "select",
+        "default": "arc",
+        "options": [
+          {
+            "value": "arc",
+            "label": "Arc"
+          },
+          {
+            "value": "bar",
+            "label": "Bar"
+          },
+          {
+            "value": "number",
+            "label": "Number"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "min",
+        "label": "Minimum",
+        "type": "number",
+        "default": 0,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "max",
+        "label": "Maximum",
+        "type": "number",
+        "default": 100,
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "warn",
+        "label": "Warn from (optional)",
+        "type": "number",
+        "help": "The gauge turns amber at this value. Set “Bad” below “Warn” for stats where low is bad, such as free space.",
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "bad",
+        "label": "Bad from (optional)",
+        "type": "number",
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "show_sparkline",
+        "label": "Show sparkline (when the stat has a series)",
+        "type": "checkbox",
+        "default": true,
+        "value": "boolean"
+      }
+    ]
+  },
+  "countdown": {
+    "label": "Countdown",
+    "group": "Basics",
+    "size": {
+      "w": 4,
+      "h": 3
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "label",
+        "label": "Label",
+        "type": "text",
+        "placeholder": "Summer holiday"
+      },
+      {
+        "key": "target",
+        "label": "Date and time",
+        "type": "text",
+        "placeholder": "2026-12-24 18:00",
+        "help": "YYYY-MM-DD or YYYY-MM-DD HH:mm in your local time, or ISO 8601 with an offset (2026-12-24T18:00:00+01:00). A date alone counts the whole day."
+      },
+      {
+        "key": "yearly",
+        "label": "Repeat every year (birthdays, anniversaries)",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "units",
+        "label": "Count down to",
+        "type": "select",
+        "default": "days",
+        "options": [
+          {
+            "value": "days",
+            "label": "Days"
+          },
+          {
+            "value": "hours",
+            "label": "Hours (12d 4h)"
+          },
+          {
+            "value": "minutes",
+            "label": "Minutes (12d 4h 5m)"
+          },
+          {
+            "value": "seconds",
+            "label": "Seconds (12d 4h 5m 3s)"
+          }
+        ],
+        "value": "one of options[].value"
+      },
+      {
+        "key": "after",
+        "label": "After it has passed",
+        "type": "select",
+        "default": "up",
+        "conditional": true,
+        "options": [
+          {
+            "value": "up",
+            "label": "Count up (“3 days ago”)"
+          },
+          {
+            "value": "done",
+            "label": "Show “Done”"
+          },
+          {
+            "value": "hide",
+            "label": "Hide the widget"
+          }
+        ],
+        "value": "one of options[].value"
+      }
+    ]
+  },
   "divider": {
     "label": "Divider line",
+    "group": "Decoration",
     "size": {
       "w": 6,
       "h": 1
@@ -1018,6 +2743,7 @@
   },
   "heading": {
     "label": "Heading",
+    "group": "Decoration",
     "size": {
       "w": 8,
       "h": 1
@@ -1095,6 +2821,7 @@
   },
   "box": {
     "label": "Box / frame",
+    "group": "Decoration",
     "size": {
       "w": 10,
       "h": 6
@@ -1168,6 +2895,111 @@
         "min": 0,
         "max": 40,
         "value": "number (null = unset)"
+      }
+    ]
+  },
+  "custom": {
+    "label": "Custom (HTML/JS)",
+    "group": "Advanced",
+    "size": {
+      "w": 6,
+      "h": 4
+    },
+    "usesService": false,
+    "fields": [
+      {
+        "key": "title",
+        "label": "Title",
+        "type": "text"
+      },
+      {
+        "key": "html",
+        "label": "HTML",
+        "type": "textarea",
+        "mono": true,
+        "rows": 7,
+        "placeholder": "<div id=\"out\"></div>",
+        "help": "Runs in a sandbox: no access to this page, its cookies or the Start Page API.",
+        "examples": [
+          {
+            "label": "Stat from integration data",
+            "config": {
+              "html": "<div class=\"stat\"><div id=\"value\">-</div><div id=\"label\">No data</div></div>",
+              "css": ".stat{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}\n#value{font-size:36px;font-weight:700;color:var(--sp-accent)}\n#label{color:var(--sp-muted)}",
+              "js": "StartPage.onData(function (data) {\n  var stat = data.integration && data.integration.stats && data.integration.stats[0];\n  document.getElementById(\"value\").textContent = stat ? stat.value + (stat.unit ? \" \" + stat.unit : \"\") : \"-\";\n  document.getElementById(\"label\").textContent = stat ? stat.label : \"Pick an integration in the widget settings\";\n});"
+            }
+          },
+          {
+            "label": "Service status list",
+            "config": {
+              "html": "<ul id=\"list\"></ul>",
+              "css": "ul{list-style:none;margin:0;padding:8px}\nli::before{content:\"\";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--sp-muted)}\nli.online::before{background:#3ecf6e}\nli.offline::before{background:#ef5350}\nli.degraded::before{background:#f5a623}",
+              "js": "StartPage.onData(function (data) {\n  var list = document.getElementById(\"list\");\n  list.textContent = \"\";\n  data.services.forEach(function (s) {\n    var li = document.createElement(\"li\");\n    li.className = s.status;\n    li.textContent = s.name + (s.latency_ms != null ? \" - \" + s.latency_ms + \" ms\" : \"\");\n    list.appendChild(li);\n  });\n});"
+            }
+          },
+          {
+            "label": "Live clock",
+            "config": {
+              "html": "<div class=\"clock\"><div id=\"time\"></div><div id=\"date\"></div></div>",
+              "css": ".clock{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}\n#time{font-size:34px;font-weight:600}\n#date{color:var(--sp-muted)}",
+              "js": "function tick() {\n  var now = new Date();\n  document.getElementById(\"time\").textContent = now.toLocaleTimeString([], { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" });\n  document.getElementById(\"date\").textContent = now.toLocaleDateString([], { weekday: \"long\", month: \"long\", day: \"numeric\" });\n}\ntick();\nsetInterval(tick, 1000);"
+            }
+          }
+        ]
+      },
+      {
+        "key": "css",
+        "label": "CSS",
+        "type": "textarea",
+        "mono": true,
+        "rows": 5,
+        "placeholder": "body { padding: 8px }"
+      },
+      {
+        "key": "js",
+        "label": "JavaScript",
+        "type": "textarea",
+        "mono": true,
+        "rows": 9,
+        "placeholder": "StartPage.onData(function (data) { /* data.integration, data.services, data.theme */ });"
+      },
+      {
+        "key": "integration_id",
+        "label": "Integration (optional)",
+        "type": "integration",
+        "help": "Its data (not its settings or keys) is passed to your code as data.integration.",
+        "value": "an integration id whose type matches integrationType (a type or list of types), or provides the capability (stats | items); with multiple: true, an array of such ids"
+      },
+      {
+        "key": "service_ids",
+        "label": "Services (optional)",
+        "type": "services",
+        "help": "Their name, address, status and latency are passed as data.services.",
+        "value": "array of service ids"
+      },
+      {
+        "key": "refresh_seconds",
+        "label": "Send data again every (seconds)",
+        "type": "number",
+        "default": 0,
+        "min": 0,
+        "max": 3600,
+        "help": "0 = only when the data changes.",
+        "value": "number (null = unset)"
+      },
+      {
+        "key": "transparent",
+        "label": "Transparent background",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
+        "key": "allow_network",
+        "label": "Allow network requests (fetch, XHR, WebSocket)",
+        "type": "checkbox",
+        "default": false,
+        "help": "Off by default. When on, the code can send the data it receives to any web address. Images can always load from the web, and the sandbox cannot stop code from putting data into an image address, so only use code you trust.",
+        "value": "boolean"
       }
     ]
   }

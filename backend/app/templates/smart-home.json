@@ -1,0 +1,123 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "smart-home",
+  "title": "Smart home",
+  "description": "Home Assistant entities, your calendar agenda, the weather and a countdown.",
+  "tags": [
+    "home automation",
+    "calendar"
+  ],
+  "requires": [
+    "home_assistant",
+    "ics"
+  ],
+  "name": "Smart home",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Home",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "home_assistant",
+      "x": 0,
+      "y": 1,
+      "w": 16,
+      "h": 7,
+      "config": {
+        "integration_id": "ha",
+        "title": "Home Assistant",
+        "layout": "grid",
+        "compact": false
+      }
+    },
+    {
+      "type": "calendar",
+      "x": 16,
+      "y": 1,
+      "w": 8,
+      "h": 7,
+      "config": {
+        "integration_ids": [
+          "calendar"
+        ],
+        "title": "Agenda",
+        "days": 7,
+        "limit": 8,
+        "show_location": true
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 8,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Outside and ahead",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "weather",
+      "x": 0,
+      "y": 9,
+      "w": 16,
+      "h": 4,
+      "config": {
+        "location": "",
+        "label": "",
+        "units": "metric",
+        "days": 5,
+        "details": true
+      }
+    },
+    {
+      "type": "countdown",
+      "x": 16,
+      "y": 9,
+      "w": 8,
+      "h": 4,
+      "config": {
+        "label": "Christmas",
+        "target": "2026-12-25",
+        "yearly": true,
+        "units": "days",
+        "after": "up"
+      }
+    }
+  ],
+  "services": [],
+  "integrations": [
+    {
+      "ref": "ha",
+      "type": "home_assistant",
+      "name": "Home Assistant"
+    },
+    {
+      "ref": "calendar",
+      "type": "ics",
+      "name": "Calendar"
+    }
+  ]
+}

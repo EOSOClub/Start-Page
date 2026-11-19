@@ -1,20 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { api } from "./api.js";
 import { AppContext } from "./context.js";
 import { useHistory } from "./history.js";
 import { collectLinks, hostOf, looksLikeUrl, normalizeUrl, tidyTitle } from "./search.js";
+import { NARROW_PX, derivePhoneLayout, fitToGrid, phoneOptions, phoneSpotOn, seedPhoneLayout } from "./phone.js";
+import { UPDATE_EVENT } from "./sw/register.js";
+import { cssUrl } from "./safeUrl.js";
 import Canvas, { SNAP_MODES, gridOptions, nudgeStep } from "./components/Canvas.jsx";
 import WidgetEditor from "./components/WidgetEditor.jsx";
+import WidgetMenu from "./components/WidgetMenu.jsx";
 import ServiceManager from "./components/ServiceManager.jsx";
 import IntegrationManager from "./components/IntegrationManager.jsx";
 import DashboardSettings from "./components/DashboardSettings.jsx";
 import ImportExport from "./components/ImportExport.jsx";
+import NewPageDialog from "./components/NewPageDialog.jsx";
+import ExportPageDialog from "./components/ExportPageDialog.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import Modal from "./components/Modal.jsx";
-import { WIDGET_TYPES, defaultConfig } from "./widgets/index.jsx";
+import LoginScreen, { LoginForm } from "./components/Login.jsx";
+import { WIDGET_GROUPS, WIDGET_TYPES, defaultConfig } from "./widgets/index.jsx";
 
 const HEALTH_POLL_MS = 10_000;
+const HISTORY_POLL_MS = 60_000;
 const RELOAD_AFTER_HIDDEN_MS = 30_000; // refetch everything when a tab comes back after this long
 const REVISION_POLL_MS = 3000; // how quickly edits made outside the app (Claude via MCP) show up
 const TOAST_MS = 6000;
@@ -25,14 +34,24 @@ const TOAST_MS = 6000;
  * index.html also reads `settings` from here to apply the theme before first paint.
  */
 const CACHE_KEY = "sp.cache.v1";
+/** Integration configs hold API keys and headers: they never go into localStorage. View mode only needs name/type. */
+const stripSecrets = (c) => (Array.isArray(c?.integrations) ? { ...c, integrations: c.integrations.map((i) => ({ ...i, config: {} })) } : c);
+const hasSecrets = (c) => Array.isArray(c?.integrations) && c.integrations.some((i) => i?.config && Object.keys(i.config).length > 0);
 const readCache = () => {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY)) || {};
+    const raw = JSON.parse(localStorage.getItem(CACHE_KEY)) || {};
+    if (!hasSecrets(raw)) return raw;
+    // A cache written before configs were stripped: scrub it now rather than wait for the next save.
+    const clean = stripSecrets(raw);
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(clean));
+    } catch {}
+    return clean;
   } catch {
     return {};
   }
 };
-const boot = readCache();
+let boot = readCache();
 // Mirror readCache: storage can throw (blocked cookies / storage-disabled iframes) and a throw
 // here at module scope would blank the whole bundle.
 const readBootId = () => {
@@ -42,7 +61,29 @@ const readBootId = () => {
     return null;
   }
 };
-const bootId = readBootId() || boot.dashboards?.[0]?.id || null;
+let bootId = readBootId() || boot.dashboards?.[0]?.id || null;
+
+/** Drop the cached page (sign-out, or the server turned out to require a login): nothing may paint from it. */
+const forgetCache = () => {
+  boot = {};
+  bootId = null;
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem("sp.dashboard");
+  } catch {}
+};
+
+/* Last auth/status, so a reload paints the right thing at once (login screen vs. page). */
+const AUTH_KEY = "sp.auth.v1";
+const AUTH_OFF = { enabled: false, has_password: false, authenticated: false, guest_access: "none", can_write: true, user: null, method: null };
+const readAuth = () => {
+  try {
+    return { ...AUTH_OFF, ...(JSON.parse(localStorage.getItem(AUTH_KEY)) || {}) };
+  } catch {
+    return AUTH_OFF;
+  }
+};
+const needsLogin = (s) => s.enabled && !s.authenticated && s.guest_access !== "read";
 
 const SHORTCUTS = [
   ["/", "focus the search bar, or open search"],
@@ -54,6 +95,7 @@ const SHORTCUTS = [
   ["Ctrl+Shift+Z / Ctrl+Y", "redo"],
   ["S", "service registry (edit mode)"],
   ["W", "add widget (edit mode)"],
+  ["Shift+W", "open the widget menu (edit mode)"],
   ["Ctrl+V", "paste a URL to add a link (edit mode)"],
   ["Arrows", "nudge the selected widget (edit mode)"],
   ["Shift+Arrows", "resize the selected widget (edit mode)"],
@@ -64,19 +106,36 @@ const SHORTCUTS = [
 ];
 
 /** The fields needed to recreate a widget exactly (same id) when undoing a delete. */
-const widgetSnapshot = (w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, service_id: w.service_id, config: w.config });
+const widgetSnapshot = (w) => ({ id: w.id, type: w.type, x: w.x, y: w.y, w: w.w, h: w.h, service_id: w.service_id, config: w.config, layout_sm: w.layout_sm ?? null });
 
-export default function App() {
+function Dashboard({ access, onSignOut, onLoggedIn, onAuthChanged }) {
+  const canWrite = access.can_write;
   const [dashboards, setDashboards] = useState(boot.dashboards || []);
   const [currentId, setCurrentId] = useState(bootId);
   const [dashboard, setDashboard] = useState(boot.pages?.[bootId] || null);
+  // True once a page came from the server (not just the cache). Published as <html data-ready> for the MCP screenshot tool.
+  const [loaded, setLoaded] = useState(false);
+  const ready = loaded && !!dashboard;
+  useEffect(() => {
+    if (!ready) return;
+    document.documentElement.dataset.ready = "page";
+    return () => { delete document.documentElement.dataset.ready; };
+  }, [ready]);
   const [services, setServices] = useState(boot.services || []);
   const [health, setHealth] = useState({});
+  const [healthHistory, setHealthHistory] = useState({}); // service id -> 24 h history
   const [integrations, setIntegrations] = useState(boot.integrations || []);
   const [integrationData, setIntegrationData] = useState({});
   const [settings, setSettings] = useState(boot.settings || null);
-  const [editMode, setEditMode] = useState(false);
+  const [wantEdit, setEditMode] = useState(false);
+  const editMode = canWrite && wantEdit; // view-only guests can never enter edit mode
+  // Which layout edit mode works on. Each page keeps a desktop layout and an optional phone layout;
+  // a narrow window opens edit mode on the phone one.
+  const [device, setDevice] = useState("desktop");
+  useEffect(() => { setDevice(editMode && window.innerWidth < NARROW_PX ? "phone" : "desktop"); }, [editMode]);
   const [modal, setModal] = useState(null);
+  const [widgetMenuOpen, setWidgetMenuOpen] = useState(false);
+  useEffect(() => { if (!editMode) setWidgetMenuOpen(false); }, [editMode]);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [toast, setToast] = useState(null); // {text, actionLabel?, action?}
@@ -100,6 +159,7 @@ export default function App() {
     // Ignore a late response for a page the user already switched away from.
     if (currentIdRef.current === d.id) {
       setDashboard(d);
+      setLoaded(true);
       setError(""); // a successful load clears any stale banner
     }
   }, [currentId]);
@@ -163,9 +223,18 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), TOAST_MS);
+    const t = setTimeout(() => setToast(null), toast.stay ? TOAST_MS * 5 : TOAST_MS);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => setSelectedId(null), [device]); // a selection belongs to one layout
+
+  // A new service worker took over (a new build is live): offer a reload, never force one.
+  useEffect(() => {
+    const onUpdated = () => setToast({ text: "Updated — reload to use the new version.", actionLabel: "Reload", action: () => location.reload(), stay: true });
+    window.addEventListener(UPDATE_EVENT, onUpdated);
+    return () => window.removeEventListener(UPDATE_EVENT, onUpdated);
+  }, []);
 
   // Poll only while the tab is visible, and only for data the page actually has.
   const counts = useRef({});
@@ -183,6 +252,30 @@ export default function App() {
       else poll();
     };
     const t = setInterval(poll, HEALTH_POLL_MS);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  // Health history (uptime, sparklines) changes slowly: once on load, then at most once a minute
+  // while the tab is visible.
+  useEffect(() => {
+    let last = 0;
+    const load = () => {
+      if (document.hidden) return;
+      last = Date.now();
+      api
+        .healthHistory(24, 48)
+        .then((list) => setHealthHistory(Object.fromEntries((list || []).map((h) => [h.service_id, h]))))
+        .catch(() => {});
+    };
+    const onVisibility = () => {
+      if (!document.hidden && Date.now() - last >= HISTORY_POLL_MS) load();
+    };
+    load();
+    const t = setInterval(load, HISTORY_POLL_MS);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       clearInterval(t);
@@ -228,7 +321,7 @@ export default function App() {
     if (dashboard) pages[dashboard.id] = dashboard;
     for (const id of Object.keys(pages)) if (!dashboards.some((d) => d.id === id)) delete pages[id];
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ dashboards, services, integrations, settings, pages }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify(stripSecrets({ dashboards, services, integrations, settings, pages })));
     } catch {}
   }, [dashboards, dashboard, services, integrations, settings]);
 
@@ -243,6 +336,8 @@ export default function App() {
     if (settings.background_color) root.style.setProperty("--bg", settings.background_color);
     else root.style.removeProperty("--bg");
     document.title = settings.title || "Start Page";
+    // Browser/OS chrome colour: the accent, the same colour the manifest's theme_color carries.
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", settings.accent || "#6c8cff");
   }, [settings]);
 
   const page = dashboard ? gridOptions(dashboard) : {};
@@ -276,56 +371,139 @@ export default function App() {
     await refreshPages();
   };
 
-  const applyLayout = (items) =>
+  /** Where each widget sits on the phone grid as the Canvas shows it (derived where none is stored), hidden ones included. */
+  const phoneItems = (d = dashboard) =>
+    derivePhoneLayout(d.widgets, { cols: d.columns || 24, colsSm: phoneOptions(d).colsSm }, { withHidden: true });
+
+  // breakpoint "sm" edits a widget's phone placement (layout_sm); a hidden flag only when the item carries one.
+  const applyLayout = (items, breakpoint = "lg") =>
     setDashboard((d) =>
       d && {
         ...d,
         widgets: d.widgets.map((w) => {
           const u = items.find((i) => i.id === w.id);
-          return u ? { ...w, ...u } : w;
+          if (!u) return w;
+          if (breakpoint === "sm") {
+            const { id, ...geo } = u;
+            return { ...w, layout_sm: { hidden: w.layout_sm?.hidden ?? false, ...geo } };
+          }
+          return { ...w, ...u };
         }),
       }
     );
 
   // Layout saves go out one at a time, so a burst of nudges can't land out of order.
+  // Desktop and phone entries carry their own breakpoint and before/after values, so undoing one
+  // never writes the other layout.
   const layoutQueue = useRef(Promise.resolve());
-  const onLayoutChange = (items, { label = "Move widget", mergeKey } = {}) =>
+  const onLayoutChange = (items, { label = "Move widget", mergeKey, breakpoint = "lg" } = {}) =>
     run(async () => {
       const dashId = currentId;
-      const before = items
-        .map((i) => dashboard.widgets.find((w) => w.id === i.id))
-        .filter(Boolean)
-        .map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
-      applyLayout(items);
-      const save = layoutQueue.current.catch(() => {}).then(() => api.saveLayout(dashId, items));
+      const before =
+        breakpoint === "sm"
+          ? phoneItems()
+              .filter((p) => items.some((i) => i.id === p.id))
+              .map(({ id, x, y, w, h, hidden, pinned }) => ({ id, x, y, w, h, hidden, pinned }))
+          : items
+              .map((i) => dashboard.widgets.find((w) => w.id === i.id))
+              .filter(Boolean)
+              .map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
+      // Phone "before": a widget that had no stored phone position goes back to none, not to the spot derived for it.
+      const restoreBefore = async () => {
+        if (breakpoint !== "sm") return api.saveLayout(dashId, before, breakpoint);
+        const pinned = before.filter((b) => b.pinned).map(({ pinned: _p, ...geo }) => geo);
+        if (pinned.length) await api.saveLayout(dashId, pinned, "sm");
+        for (const b of before) if (!b.pinned) await api.updateWidget(b.id, { layout_sm: null });
+      };
+      const rollbackLocal = () => {
+        if (breakpoint !== "sm") return applyLayout(before, breakpoint);
+        applyLayout(before.filter((b) => b.pinned), "sm");
+        const loose = new Set(before.filter((b) => !b.pinned).map((b) => b.id));
+        setDashboard((d) => d && { ...d, widgets: d.widgets.map((w) => (loose.has(w.id) ? { ...w, layout_sm: null } : w)) });
+      };
+      applyLayout(items, breakpoint);
+      const save = layoutQueue.current.catch(() => {}).then(() => api.saveLayout(dashId, items, breakpoint));
       layoutQueue.current = save;
       try {
         await save;
       } catch (e) {
-        applyLayout(before); // the save failed: don't leave the widget where the server never put it
+        rollbackLocal(); // the save failed: don't leave the widget where the server never put it
         throw e;
       }
       history.push({
         label,
         mergeKey,
-        undo: () => onPage(dashId, () => api.saveLayout(dashId, before)),
-        redo: () => onPage(dashId, () => api.saveLayout(dashId, items)),
+        undo: () => onPage(dashId, restoreBefore),
+        redo: () => onPage(dashId, () => api.saveLayout(dashId, items, breakpoint)),
       });
+    });
+
+  const phoneChange = (items) => onLayoutChange(items, { label: "Move widget (phone)", breakpoint: "sm" });
+
+  const togglePhoneHidden = (widget, hidden) => {
+    const cur = phoneItems().find((p) => p.id === widget.id);
+    if (!cur) return;
+    onLayoutChange([{ id: cur.id, x: cur.x, y: cur.y, w: cur.w, h: cur.h, hidden }], { label: hidden ? "Hide on phone" : "Show on phone", breakpoint: "sm" });
+  };
+
+  /** Switch a page to its custom phone layout (seeded from the automatic stack) or back to automatic; one undo step each. */
+  // `extra` carries the other page fields of a settings-dialog save that switched the page to Custom.
+  const changePhoneLayout = (mode, extra = {}) =>
+    run(async () => {
+      await layoutQueue.current.catch(() => {});
+      const d = dashboard;
+      const dashId = currentId;
+      const prevSettings = d.settings || {};
+      const nextSettings = { ...prevSettings, ...(extra.settings || {}), phone_layout: mode };
+      const nextData = { ...extra, settings: nextSettings };
+      const prevData = Object.fromEntries(Object.keys(nextData).map((k) => [k, d[k]]));
+      prevData.settings = prevSettings;
+      const seed = mode === "custom" ? seedPhoneLayout(d.widgets, { cols: nextData.columns || d.columns || 24, colsSm: phoneOptions({ settings: nextSettings }).colsSm }) : null;
+      const before = d.widgets.filter((w) => w.layout_sm).map((w) => ({ id: w.id, ...w.layout_sm }));
+      // Undo: the saved positions go back first (clamped to the page's current phone columns, which may have
+      // shrunk since: the server refuses a position that overflows), then the positions this step created are
+      // removed one widget at a time. A failure part-way never leaves the page with no layout at all.
+      const restore = async () => {
+        const cur = await api.getDashboard(dashId);
+        const fitted = fitToGrid(before, phoneOptions(cur).colsSm);
+        if (fitted.length) await api.saveLayout(dashId, fitted, "sm");
+        const keep = new Set(fitted.map((i) => i.id));
+        for (const w of cur.widgets || []) if (w.layout_sm && !keep.has(w.id)) await api.updateWidget(w.id, { layout_sm: null });
+        await api.updateDashboard(dashId, prevData);
+      };
+      const apply = async () => {
+        if (seed) await api.saveLayout(dashId, seed, "sm");
+        else await api.clearPhoneLayout(dashId);
+        await api.updateDashboard(dashId, nextData);
+      };
+      await apply();
+      history.push({
+        label: mode === "custom" ? "Start phone layout" : "Reset phone layout",
+        undo: () => onPage(dashId, restore),
+        redo: () => onPage(dashId, apply),
+      });
+      setModal(null);
+      await refreshPages();
     });
 
   /** Arrow-key nudge (dx/dy) or resize (dw/dh) of the selected widget, in steps of the snap size. */
   const nudge = (dx, dy, dw, dh) => {
-    const w = dashboard?.widgets.find((x) => x.id === selectedId);
+    const phone = device === "phone";
+    const w = phone ? phoneItems().find((x) => x.id === selectedId) : dashboard?.widgets.find((x) => x.id === selectedId);
     if (!w) return;
     const step = nudgeStep(dashboard);
-    const cols = dashboard.columns || 24;
+    const cols = phone ? phoneOptions(dashboard).colsSm : dashboard.columns || 24;
     const round = (v) => Math.round(v * 1000) / 1000;
     const nw = round(Math.max(step, Math.min(cols, w.w + dw * step)));
     const nh = round(Math.max(step, w.h + dh * step));
     const nx = round(Math.max(0, Math.min(cols - nw, w.x + dx * step)));
     const ny = round(Math.max(0, w.y + dy * step));
     if (nx === w.x && ny === w.y && nw === w.w && nh === w.h) return;
-    onLayoutChange([{ id: w.id, x: nx, y: ny, w: nw, h: nh }], { label: dw || dh ? "Resize widget" : "Move widget", mergeKey: `nudge:${w.id}:${dw || dh ? "size" : "pos"}` });
+    onLayoutChange([{ id: w.id, x: nx, y: ny, w: nw, h: nh }], {
+      label: `${dw || dh ? "Resize" : "Move"} widget${phone ? " (phone)" : ""}`,
+      mergeKey: `nudge:${phone ? "sm:" : ""}${w.id}:${dw || dh ? "size" : "pos"}`,
+      breakpoint: phone ? "sm" : "lg",
+    });
   };
 
   /** Save a widget's config in place (used by widgets that edit themselves, e.g. Notes). Not part of undo. */
@@ -414,7 +592,7 @@ export default function App() {
       const spot = findFreeSpot(widget.w, widget.h, target.widgets, target.columns || 24);
       if (copy) {
         const { id, ...fields } = widgetSnapshot(widget);
-        const created = await api.createWidget(targetId, { ...fields, ...spot });
+        const created = await api.createWidget(targetId, { ...fields, ...spot, layout_sm: phoneSpotOn(widget.layout_sm, target) });
         const snap = widgetSnapshot(created);
         history.push({
           label: `Copy widget to ${target.name}`,
@@ -422,8 +600,9 @@ export default function App() {
           redo: () => onPage(null, () => api.createWidget(targetId, snap)),
         });
       } else {
-        const before = { dashboard_id: fromId, x: widget.x, y: widget.y };
-        const after = { dashboard_id: targetId, ...spot };
+        // The phone placement travels with the widget (to a free spot on a page with a custom phone layout).
+        const before = { dashboard_id: fromId, x: widget.x, y: widget.y, layout_sm: widget.layout_sm ?? null };
+        const after = { dashboard_id: targetId, ...spot, layout_sm: phoneSpotOn(widget.layout_sm, target) };
         await api.updateWidget(widget.id, after);
         history.push({
           label: `Move widget to ${target.name}`,
@@ -437,10 +616,11 @@ export default function App() {
       await loadDashboard();
     });
 
-  const addDashboard = () =>
+  const addDashboard = (given) =>
     run(async () => {
-      const name = prompt("Dashboard name", "New page");
+      const name = typeof given === "string" ? given : prompt("Dashboard name", "New page");
       if (!name) return;
+      setModal(null);
       const d = await api.createDashboard({ name });
       let detail = null; // this page's full detail (widgets included), captured by its undo for its redo to restore
       history.push({
@@ -464,7 +644,37 @@ export default function App() {
       setCurrentId(d.id);
     });
 
-  const saveDashboard = (data) =>
+  /** A page created from a template or a page file (the import response): undone like "Add page" (the page is deleted,
+   *  its full detail is kept for redo). Services it created stay: other widgets may use them by now. */
+  const addImportedPage = async (result) => {
+    const d = result.dashboard;
+    let detail = result.dashboard;
+    history.push({
+      label: "Add page from template",
+      undo: () =>
+        onPage(null, async () => {
+          detail = await api.getDashboard(d.id);
+          await api.deleteDashboard(d.id);
+        }),
+      redo: async () => {
+        await api.importConfig({ services: [], integrations: [], settings: {}, dashboards: [detail] }, false);
+        await refreshPages();
+        setCurrentId(d.id);
+      },
+    });
+    setModal(null);
+    await Promise.all([loadDashboards(), loadServices()]);
+    setCurrentId(d.id);
+    const later = result.unresolved_integrations?.length;
+    setToast({ text: `Created "${d.name}"${later ? ` — ${later} integration${later === 1 ? "" : "s"} still to set up` : ""}` });
+  };
+
+  const saveDashboard = (data) => {
+    // Switching a page to Custom runs the same seed as the toolbar button: otherwise its widgets have no phone positions.
+    if (data.settings?.phone_layout === "custom" && !phoneOptions(dashboard).custom) return changePhoneLayout("custom", data);
+    return saveDashboardPlain(data);
+  };
+  const saveDashboardPlain = (data) =>
     run(async () => {
       const dashId = currentId;
       const before = Object.fromEntries(Object.keys(data).map((k) => [k, dashboard[k]]));
@@ -577,6 +787,7 @@ export default function App() {
       }
       if (modal || typing) return;
       if (mod && (key === "z" || key === "y")) {
+        if (!canWrite) return;
         e.preventDefault();
         if (key === "y" || e.shiftKey) doRedo();
         else doUndo();
@@ -605,11 +816,11 @@ export default function App() {
         else setModal({ kind: "palette" });
       }
       else if (e.key === "?") setModal({ kind: "help" });
-      else if (key === "e") setEditMode((m) => !m);
+      else if (key === "e") { if (canWrite) setEditMode((m) => !m); }
       else if (e.key === "Escape") setEditMode(false);
       else if (/^[1-9]$/.test(e.key)) { const d = dashboards[Number(e.key) - 1]; if (d) setCurrentId(d.id); }
       else if (editMode && key === "s") setModal({ kind: "services" });
-      else if (editMode && key === "w") addWidget("link");
+      else if (editMode && key === "w") { if (e.shiftKey) setWidgetMenuOpen(true); else addWidget("link"); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -638,8 +849,11 @@ export default function App() {
   const links = useMemo(() => collectLinks(dashboard?.widgets), [dashboard]);
 
   const ctx = useMemo(
-    () => ({ settings: settings || {}, services, dashboards, links, health, editMode, goToPage: setCurrentId, updateWidgetConfig }),
-    [settings, services, dashboards, links, health, editMode, updateWidgetConfig]
+    () => ({
+      settings: settings || {}, services, dashboards, links, health, editMode, canWrite, goToPage: setCurrentId,
+      updateWidgetConfig: canWrite ? updateWidgetConfig : undefined, // widgets skip saving when it is missing
+    }),
+    [settings, services, dashboards, links, health, editMode, canWrite, updateWidgetConfig]
   );
 
   const renameDone = useRef(false);
@@ -661,7 +875,7 @@ export default function App() {
       {pageBg && (
         <div
           className="page-bg"
-          style={{ backgroundImage: `url("${pageBg}")`, filter: bgBlur ? `blur(${bgBlur}px)` : undefined }}
+          style={{ backgroundImage: cssUrl(pageBg), filter: bgBlur ? `blur(${bgBlur}px)` : undefined }}
         />
       )}
       {pageBg && <div className="page-bg-dim" style={{ opacity: bgDim / 100 }} />}
@@ -715,7 +929,7 @@ export default function App() {
               </button>
             )
           )}
-          {editMode && <button className="tab tab-add" onClick={addDashboard} title="New dashboard">+</button>}
+          {editMode && <button className="tab tab-add" onClick={() => setModal({ kind: "newpage" })} title="New page: blank, from a template or from a file">+</button>}
         </nav>
         <div className="spacer" />
         <div className="toolbar">
@@ -726,14 +940,14 @@ export default function App() {
                 <button onClick={doUndo} disabled={!history.canUndo} title={history.canUndo ? `Undo: ${history.undoLabel} (Ctrl+Z)` : "Nothing to undo"}>↶</button>
                 <button onClick={doRedo} disabled={!history.canRedo} title={history.canRedo ? `Redo: ${history.redoLabel} (Ctrl+Shift+Z)` : "Nothing to redo"}>↷</button>
               </div>
-              <div className="dropdown">
-                <button className="btn-primary">+ Widget ▾</button>
-                <div className="dropdown-menu">
-                  {Object.entries(WIDGET_TYPES).map(([k, d]) => (
-                    <button key={k} onClick={() => addWidget(k)}>{d.label}</button>
-                  ))}
-                </div>
+              <div className="btn-group" role="group" aria-label="Layout being edited">
+                <button className={device === "desktop" ? "btn-primary" : ""} aria-pressed={device === "desktop"} onClick={() => setDevice("desktop")} title="Edit the desktop layout">Desktop</button>
+                <button className={device === "phone" ? "btn-primary" : ""} aria-pressed={device === "phone"} onClick={() => setDevice("phone")} title="Edit the phone layout">Phone</button>
               </div>
+              {device === "phone" && dashboard && phoneOptions(dashboard).custom && (
+                <button className="nowrap" onClick={() => changePhoneLayout("auto")} title="Go back to stacking widgets automatically on phones (undoable)">Reset to automatic</button>
+              )}
+              <WidgetMenu types={WIDGET_TYPES} groups={WIDGET_GROUPS} open={widgetMenuOpen} onOpenChange={setWidgetMenuOpen} onPick={addWidget} />
               {dashboard && (
                 <select
                   className="snap-select"
@@ -757,9 +971,15 @@ export default function App() {
               </div>
             </>
           )}
-          <button className={editMode ? "btn-primary" : ""} onClick={() => setEditMode((m) => !m)} title="Toggle edit mode (E)">
-            {editMode ? "Done" : "Edit"}
-          </button>
+          {canWrite && (
+            <button className={editMode ? "btn-primary" : ""} onClick={() => setEditMode((m) => !m)} title="Toggle edit mode (E)">
+              {editMode ? "Done" : "Edit"}
+            </button>
+          )}
+          {!canWrite && <button onClick={() => setModal({ kind: "signin" })}>Sign in</button>}
+          {access.enabled && access.authenticated && access.method === "session" && (
+            <button className="btn-sm btn-quiet" onClick={onSignOut} title="Sign out of this browser">Sign out</button>
+          )}
         </div>
       </header>
 
@@ -783,11 +1003,16 @@ export default function App() {
           widgets={dashboard.widgets}
           services={services}
           health={health}
+          history={healthHistory}
           integrations={integrations}
           integrationData={integrationData}
           onRefresh={loadIntegrations}
           editMode={editMode}
           onLayoutChange={(items) => onLayoutChange(items, { label: "Move widget" })}
+          device={device}
+          onPhoneLayoutChange={phoneChange}
+          onTogglePhoneHidden={togglePhoneHidden}
+          onStartPhoneLayout={() => changePhoneLayout("custom")}
           onEditWidget={(w) => setModal({ kind: "widget", widget: w })}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -812,6 +1037,7 @@ export default function App() {
           widget={(modal.back ?? modal).widget}
           services={services}
           integrations={integrations}
+          integrationData={integrationData}
           dashboards={dashboards}
           onSave={saveWidget}
           onDelete={() => deleteWidget(modal.widget)}
@@ -829,10 +1055,17 @@ export default function App() {
         <IntegrationManager integrations={integrations} integrationData={integrationData} onChanged={loadIntegrations} onClose={() => setModal(modal.back ?? null)} />
       )}
       {modal?.kind === "dashboard" && dashboard && (
-        <DashboardSettings dashboard={dashboard} canDelete={dashboards.length > 1} onSave={saveDashboard} onDelete={deleteDashboard} onClose={() => setModal(null)} />
+        <DashboardSettings dashboard={dashboard} canDelete={dashboards.length > 1} onSave={saveDashboard} onDelete={deleteDashboard} onExport={() => setModal({ kind: "exportpage" })} onClose={() => setModal(null)} />
       )}
+      {modal?.kind === "newpage" && <NewPageDialog integrations={integrations} onBlank={addDashboard} onCreated={addImportedPage} onClose={() => setModal(null)} />}
+      {modal?.kind === "exportpage" && dashboard && <ExportPageDialog dashboard={dashboard} onClose={() => setModal(null)} />}
       {modal?.kind === "settings" && settings && (
-        <SettingsModal settings={settings} onSave={saveSettings} onRestored={reloadReplaced} onClose={() => setModal(null)} />
+        <SettingsModal settings={settings} auth={access} onAuthChanged={onAuthChanged} onSave={saveSettings} onSettingsSaved={setSettings} onRestored={reloadReplaced} onClose={() => setModal(null)} />
+      )}
+      {modal?.kind === "signin" && (
+        <Modal title="Sign in" onClose={() => setModal(null)}>
+          <LoginForm onLoggedIn={onLoggedIn} />
+        </Modal>
       )}
       {modal?.kind === "io" && <ImportExport onImported={reloadReplaced} onClose={() => setModal(null)} />}
       {modal?.kind === "palette" && (
@@ -862,4 +1095,97 @@ export default function App() {
     </div>
     </AppContext.Provider>
   );
+}
+
+/*
+ * Auth gate. Authentication is optional and off by default: with no password this renders the
+ * page exactly as before. When the server requires a login (and guests are not allowed), the
+ * dashboard is not mounted at all, so nothing is polled and nothing is painted from the cache.
+ */
+export default function App() {
+  const [status, setStatus] = useState(readAuth);
+  const [epoch, setEpoch] = useState(0); // remounts the page after sign-in/out so it reloads what the new role may see
+  const [signingOut, setSigningOut] = useState(false);
+
+  const applyStatus = useCallback((s) => {
+    const next = { ...AUTH_OFF, ...(s || {}) };
+    try {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(next));
+    } catch {}
+    if (needsLogin(next)) {
+      // Unmount the page first (synchronously), so a late poll cannot write the cache back after it is cleared.
+      flushSync(() => setStatus(next));
+      forgetCache();
+    } else {
+      setStatus(next);
+    }
+    return next;
+  }, []);
+
+  // "pending" until the first auth/status answer. With proxy/SSO auth in front, the cached copy may only be
+  // painted once the server confirms the session: a cached shell served offline must not show cached pages.
+  const [probe, setProbe] = useState("pending"); // pending | ok | failed
+  const viaProxy = status.method === "proxy";
+  // A failed probe (server restarting, offline) keeps the last known state.
+  const refreshStatus = useCallback(
+    () =>
+      api
+        .authStatus()
+        .then((s) => {
+          setProbe("ok");
+          return applyStatus(s);
+        })
+        .catch(() => {
+          setProbe("failed");
+          return status;
+        }),
+    [applyStatus] // eslint-disable-line
+  );
+
+  useEffect(() => {
+    refreshStatus();
+    api.onUnauthorized(refreshStatus);
+    return () => api.onUnauthorized(null);
+  }, [refreshStatus]);
+
+  const loginShown = needsLogin(status);
+  useEffect(() => {
+    if (!loginShown) return;
+    document.documentElement.dataset.ready = "login"; // lets the MCP screenshot tool tell a login screen from a loading page
+    return () => { delete document.documentElement.dataset.ready; };
+  }, [loginShown]);
+
+  const onLoggedIn = async () => {
+    await refreshStatus();
+    setEpoch((e) => e + 1);
+  };
+  const onSignOut = async () => {
+    try {
+      await api.logout();
+    } catch {}
+    flushSync(() => setSigningOut(true)); // unmount the page before the cache goes, so nothing can rewrite it
+    forgetCache();
+    await refreshStatus();
+    setEpoch((e) => e + 1);
+    setSigningOut(false);
+  };
+
+  if (signingOut) return null;
+  if (viaProxy && probe !== "ok") {
+    return (
+      <div className="login-screen" role="status" data-ready={probe === "failed" ? "offline" : undefined}>
+        <div className="login-card">
+          <h1>{probe === "failed" ? "Can't reach the server" : "Connecting…"}</h1>
+          {probe === "failed" && (
+            <>
+              <p className="muted">Your sign-in is handled by a proxy, so the saved copy is not shown until the server answers.</p>
+              <button className="btn" onClick={() => { setProbe("pending"); refreshStatus(); }}>Try again</button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+  if (needsLogin(status)) return <LoginScreen onLoggedIn={onLoggedIn} />;
+  return <Dashboard key={epoch} access={status} onSignOut={onSignOut} onLoggedIn={onLoggedIn} onAuthChanged={refreshStatus} />;
 }

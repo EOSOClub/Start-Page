@@ -36,6 +36,21 @@ from app.main import app  # noqa: E402, F401  (importing main registers the mode
 HEADERS = {"x-requested-by": "startpage"}
 
 
+@pytest.fixture(autouse=True)
+def _integration_runtime_clean():
+    """The integration runtime keeps module-level state (cached data, contexts); start and end clean."""
+    from app.integrations import runtime
+
+    def clear():
+        for d in (runtime._data, runtime._next, runtime._ctx, runtime._last_logged):
+            d.clear()
+        runtime._closing.clear()
+
+    clear()
+    yield
+    clear()
+
+
 @pytest.fixture(name="session")
 def session_fixture():
     engine = create_engine(

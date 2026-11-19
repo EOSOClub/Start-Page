@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "./Modal.jsx";
+import DiscoverPanel from "./DiscoverPanel.jsx";
 import ConfigForm from "./ConfigForm.jsx";
 import Icon from "../widgets/Icon.jsx";
 import { api } from "../api.js";
+import { safeHref } from "../safeUrl.js";
 
 const SERVICE_FIELDS = [
   { key: "name", label: "Name", type: "text" },
@@ -51,6 +53,14 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
   const [editing, setEditing] = useState(null); // null | {…service} (id absent = new)
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("");
+  const [docker, setDocker] = useState(null); // null while loading, else the docker integrations
+  const [discovering, setDiscovering] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    api.listIntegrations().then((list) => live && setDocker(list.filter((i) => i.type === "docker")), () => live && setDocker([]));
+    return () => { live = false; };
+  }, []);
 
   const save = async () => {
     setError("");
@@ -101,6 +111,10 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
     );
   }
 
+  if (discovering) {
+    return <DiscoverPanel integrations={docker || []} onBack={() => setDiscovering(false)} onImported={onChanged} />;
+  }
+
   return (
     <Modal
       title={title}
@@ -111,11 +125,13 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
           {error && <span className="error">{error}</span>}
           <span className="muted">{services.length} services</span>
           <span className="spacer" />
+          {docker && docker.length > 0 && <button onClick={() => setDiscovering(true)} title="Find services among your Docker containers">Discover</button>}
           <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}>+ New service</button>
         </>
       }
     >
       <input className="search" placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+      {docker && docker.length === 0 && <p className="help">Discovery needs a Docker integration (Integrations in the menu).</p>}
       {rows.length === 0 && <p className="muted">No services yet. Add one — widgets reference services, so changing an IP here updates every widget that uses it.</p>}
       {Object.entries(grouped).sort().map(([cat, list]) => (
         <div key={cat} className="svc-group">
@@ -127,7 +143,7 @@ export default function ServiceManager({ services, health, onChanged, onClose, t
                   <td><StatusDot status={health[s.id]} /></td>
                   <td><Icon icon={s.icon} fallback={s.name} size={22} /></td>
                   <td><strong>{s.name}</strong></td>
-                  <td className="muted"><a href={s.url} target="_blank" rel="noreferrer">{s.url}</a></td>
+                  <td className="muted"><a href={safeHref(s.url) ?? undefined} target="_blank" rel="noreferrer">{s.url}</a></td>
                   <td className="muted right">{health[s.id]?.latency_ms != null ? `${health[s.id].latency_ms} ms` : ""}</td>
                   <td className="right nowrap">
                     <button className="btn-sm" onClick={() => api.checkHealth(s.id).then(onChanged).catch((e) => setError(e.message))} title="Check now">↻</button>{" "}

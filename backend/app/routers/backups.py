@@ -21,9 +21,9 @@ def create_backup(label: str = Query("manual")):
     return backups.create_backup(safe)
 
 
-def _read_bundle(name: str) -> schemas.ExportBundle:
+def _read_bundle(name: str) -> schemas.ImportBundle:
     try:
-        return schemas.ExportBundle.model_validate(backups.read_backup(name))
+        return schemas.ImportBundle.model_validate(backups.read_backup(name))
     except FileNotFoundError:
         raise HTTPException(404, "Backup not found")
     except ValueError:  # bad JSON, bad encoding, or not a bundle (pydantic's ValidationError is a ValueError)
@@ -35,7 +35,7 @@ def get_backup(name: str):
     return _read_bundle(name)
 
 
-@router.post("/{name}/restore", response_model=schemas.ExportBundle)
+@router.post("/{name}/restore", response_model=schemas.ImportResult)
 def restore_backup(name: str, replace: bool = Query(True), db: Session = Depends(get_db)):
     bundle = _read_bundle(name)
     backups.create_backup("pre-restore")

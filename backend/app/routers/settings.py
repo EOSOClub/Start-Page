@@ -9,6 +9,20 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 KEY = "app"
 
 
+MASK = schemas.NOTIFY_URL_MASK
+
+
+def public(settings: dict) -> dict:
+    """Settings as the API shows them. `notify_url` is a bearer secret (a webhook URL) and
+    write-only: the mask when set, "" when not, plus `notify_url_set`. The same for everyone,
+    guests included. Exports and backups use `load` and keep the real value."""
+    out = dict(settings)
+    is_set = bool(out.get("notify_url"))
+    out["notify_url"] = MASK if is_set else ""
+    out["notify_url_set"] = is_set
+    return out
+
+
 def load(db: Session) -> dict:
     row = db.get(models.AppSetting, KEY)
     stored = (row.value if row else None) or {}
@@ -21,6 +35,9 @@ def load(db: Session) -> dict:
 
 
 def save(db: Session, data: dict) -> dict:
+    data = {k: v for k, v in data.items() if k != "notify_url_set"}  # read-only, derived
+    if data.get("notify_url") == MASK:
+        del data["notify_url"]  # the mask sent back (or imported) means "keep the stored URL"
     row = db.get(models.AppSetting, KEY)
     current = (row.value if row else None) or {}
     merged = {**current, **data}
@@ -40,11 +57,11 @@ def save(db: Session, data: dict) -> dict:
     return out
 
 
-@router.get("", response_model=schemas.Settings)
+@router.get("", response_model=schemas.SettingsOut)
 def get_settings(db: Session = Depends(get_db)):
-    return load(db)
+    return public(load(db))
 
 
-@router.patch("", response_model=schemas.Settings)
+@router.patch("", response_model=schemas.SettingsOut)
 def update_settings(payload: schemas.Settings, db: Session = Depends(get_db)):
-    return save(db, payload.model_dump(exclude_unset=True))
+    return public(save(db, payload.model_dump(exclude_unset=True)))

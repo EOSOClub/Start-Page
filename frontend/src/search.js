@@ -1,4 +1,5 @@
 /* Shared search logic for the command palette and the Search widget. */
+import { safeHref } from "./safeUrl.js";
 
 export const SEARCH_ENGINES = {
   duckduckgo: { label: "DuckDuckGo", url: "https://duckduckgo.com/?q={q}" },
@@ -9,6 +10,7 @@ export const SEARCH_ENGINES = {
   kagi: { label: "Kagi", url: "https://kagi.com/search?q={q}" },
 };
 
+const APP_SCHEME = /^[a-z][a-z0-9+.-]*:(?!\d+(\/|$))/i;
 const LOCAL_HOST = /^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/|$)/i;
 
 export const looksLikeUrl = (s) =>
@@ -18,6 +20,9 @@ export const looksLikeUrl = (s) =>
 export function normalizeUrl(s) {
   s = s.trim();
   if (/^https?:\/\//i.test(s)) return s;
+  // Anything that already has a scheme (obsidian://vault, steam:run/1, mailto:a@b.c, ssh://host) or is relative
+  // (/path, ./x, #a, ?q) is left alone. "host:8080" is not a scheme: a digit port follows the colon.
+  if (APP_SCHEME.test(s) || /^[/.#?]/.test(s)) return s;
   return (LOCAL_HOST.test(s) || /:\d+(\/|$)/.test(s) ? "http://" : "https://") + s;
 }
 
@@ -44,8 +49,10 @@ export function queryTarget(q, template) {
 }
 
 export function openUrl(url, newTab) {
-  if (newTab) window.open(url, "_blank", "noopener");
-  else window.location.href = url;
+  const href = safeHref(url); // a javascript:/data: URL is never navigated to
+  if (!href) return;
+  if (newTab) window.open(href, "_blank", "noopener");
+  else window.location.href = href;
 }
 
 /**
@@ -89,7 +96,7 @@ export function buildItems({ services = [], links = [], dashboards = [], health 
       title: l.name || hostOf(l.url),
       sub: l.url,
       icon: l.icon,
-      url: normalizeUrl(l.url),
+      url: safeHref(normalizeUrl(l.url)) ?? "",
       text: `${l.name} ${l.url} ${l.description || ""}`.toLowerCase(),
     })),
     ...dashboards.map((d) => ({

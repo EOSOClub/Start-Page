@@ -2,9 +2,12 @@
 import logging
 import re
 import time
+from collections import OrderedDict
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+
+from .. import auth
 
 log = logging.getLogger("startpage.weather")
 router = APIRouter(prefix="/api/weather", tags=["weather"])
@@ -12,10 +15,18 @@ router = APIRouter(prefix="/api/weather", tags=["weather"])
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TTL = 15 * 60
+MAX_CACHE = 200  # entries per cache; the least recently used one is dropped past this
 
-_geo_cache: dict[str, dict] = {}
-_cache: dict[tuple, tuple[float, dict]] = {}
+_geo_cache: OrderedDict[str, dict] = OrderedDict()
+_cache: OrderedDict[tuple, tuple[float, dict]] = OrderedDict()
 LATLON = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$")
+
+
+def _put(cache: OrderedDict, key, value) -> None:
+    cache[key] = value
+    cache.move_to_end(key)
+    while len(cache) > MAX_CACHE:
+        cache.popitem(last=False)
 
 
 def _at(arr, i):
@@ -41,20 +52,30 @@ async def _geocode(client: httpx.AsyncClient, location: str) -> dict:
             results.sort(key=lambda r: not any(str(r.get(f, "")).lower().startswith(hint) for f in fields))
         r = results[0]
         label = ", ".join(p for p in (r.get("name"), r.get("admin1") or r.get("country")) if p)
-        _geo_cache[key] = {"name": label, "latitude": r["latitude"], "longitude": r["longitude"]}
+        _put(_geo_cache, key, {"name": label, "latitude": r["latitude"], "longitude": r["longitude"]})
+    _geo_cache.move_to_end(key)
     return _geo_cache[key]
 
 
 @router.get("")
 async def weather(
-    location: str = Query(..., min_length=1),
+    request: Request,
+    location: str = Query(..., min_length=1, max_length=200),
     units: str = Query("metric", pattern="^(metric|imperial)$"),
     days: int = Query(3, ge=0, le=7),
 ):
     key = (location.strip().lower(), units, days)
     hit = _cache.get(key)
+    if hit:
+        _cache.move_to_end(key)
     if hit and time.time() - hit[0] < TTL:
         return hit[1]
+    if auth.is_guest(request):
+        # A guest must not make the server call Open-Meteo for arbitrary places: cache only
+        # (a stale entry is fine), and a clear "not cached" otherwise.
+        if hit:
+            return hit[1]
+        raise HTTPException(404, "Weather for this location is not cached; sign in to load it")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             place = await _geocode(client, location)
@@ -101,5 +122,5 @@ async def weather(
             for i, date in enumerate(daily.get("time", [])[:days])
         ],
     }
-    _cache[key] = (time.time(), result)
+    _put(_cache, key, (time.time(), result))
     return result

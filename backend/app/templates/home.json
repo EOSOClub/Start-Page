@@ -1,0 +1,169 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "home",
+  "title": "Home",
+  "description": "A calm start page: greeting, clock, weather, search, bookmarks and a notepad. Needs no integrations.",
+  "tags": [
+    "general",
+    "starter"
+  ],
+  "requires": [],
+  "name": "Home",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "greeting",
+      "x": 0,
+      "y": 0,
+      "w": 10,
+      "h": 4,
+      "config": {
+        "name": "",
+        "showTime": false,
+        "showDate": true,
+        "align": "left",
+        "transparent": true
+      }
+    },
+    {
+      "type": "clock",
+      "x": 10,
+      "y": 0,
+      "w": 4,
+      "h": 4,
+      "config": {
+        "showSeconds": false,
+        "h24": true,
+        "showDate": false,
+        "label": ""
+      }
+    },
+    {
+      "type": "weather",
+      "x": 14,
+      "y": 0,
+      "w": 10,
+      "h": 4,
+      "config": {
+        "location": "",
+        "label": "",
+        "units": "metric",
+        "days": 3,
+        "details": true
+      }
+    },
+    {
+      "type": "search",
+      "x": 4,
+      "y": 4,
+      "w": 16,
+      "h": 2,
+      "config": {
+        "engine": "",
+        "engineSwitcher": false,
+        "placeholder": "Search the web",
+        "suggestions": true,
+        "transparent": true
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 6,
+      "w": 14,
+      "h": 1,
+      "config": {
+        "text": "Bookmarks",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "heading",
+      "x": 14,
+      "y": 6,
+      "w": 10,
+      "h": 1,
+      "config": {
+        "text": "Notes",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "bookmarks",
+      "x": 0,
+      "y": 7,
+      "w": 14,
+      "h": 5,
+      "config": {
+        "title": "",
+        "display": "tiles",
+        "newTab": false,
+        "links": [
+          {
+            "id": "b1",
+            "name": "Wikipedia",
+            "url": "https://www.wikipedia.org",
+            "icon": ""
+          },
+          {
+            "id": "b2",
+            "name": "GitHub",
+            "url": "https://github.com",
+            "icon": ""
+          },
+          {
+            "id": "b3",
+            "name": "Hacker News",
+            "url": "https://news.ycombinator.com",
+            "icon": ""
+          },
+          {
+            "id": "b4",
+            "name": "OpenStreetMap",
+            "url": "https://www.openstreetmap.org",
+            "icon": ""
+          },
+          {
+            "id": "b5",
+            "name": "Internet Archive",
+            "url": "https://archive.org",
+            "icon": ""
+          },
+          {
+            "id": "b6",
+            "name": "DuckDuckGo",
+            "url": "https://duckduckgo.com",
+            "icon": ""
+          }
+        ]
+      }
+    },
+    {
+      "type": "notes",
+      "x": 14,
+      "y": 7,
+      "w": 10,
+      "h": 5,
+      "config": {
+        "title": "Notes",
+        "mode": "note",
+        "placeholder": "Jot something down"
+      }
+    }
+  ],
+  "services": [],
+  "integrations": []
+}

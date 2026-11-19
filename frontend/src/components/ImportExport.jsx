@@ -1,11 +1,13 @@
 import { useRef, useState } from "react";
 import Modal from "./Modal.jsx";
 import { api } from "../api.js";
+import ImportReport from "./ImportReport.jsx";
 
 export default function ImportExport({ onImported, onClose }) {
   const fileRef = useRef();
   const [replace, setReplace] = useState(false);
   const [msg, setMsg] = useState("");
+  const [report, setReport] = useState(null);
 
   const doExport = async () => {
     const bundle = await api.exportConfig();
@@ -19,11 +21,12 @@ export default function ImportExport({ onImported, onClose }) {
 
   const doImport = async (file) => {
     setMsg("");
+    setReport(null);
     try {
       const bundle = JSON.parse(await file.text());
       if (replace && !confirm("This will delete ALL current dashboards, widgets and services first. Continue?")) return;
-      await api.importConfig(bundle, replace);
-      setMsg("Imported successfully.");
+      const res = await api.importConfig(bundle, replace);
+      setReport({ result: res || {} });
       await onImported();
     } catch (e) {
       setMsg(`Import failed: ${e.message}`);
@@ -51,7 +54,8 @@ export default function ImportExport({ onImported, onClose }) {
             if (file) doImport(file);
           }} />
           <button onClick={() => fileRef.current.click()}>Choose file…</button>
-          {msg && <p className={msg.startsWith("Import failed") ? "error" : "ok"}>{msg}</p>}
+          {msg && <p className="error">{msg}</p>}
+          {report && <ImportReport verb="Imported" result={report.result} />}
         </section>
       </div>
     </Modal>

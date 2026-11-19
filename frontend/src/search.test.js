@@ -13,6 +13,7 @@ describe("search", () => {
     expect(normalizeUrl("  http://a.b ")).toBe("http://a.b");
     expect(normalizeUrl("localhost:3000")).toBe("http://localhost:3000");
     expect(normalizeUrl("example.com")).toBe("https://example.com");
+    expect(normalizeUrl("example.com:8080/x")).toBe("http://example.com:8080/x");
   });
 
   it("collectLinks survives hostile shapes (Iterations 017/018)", () => {
@@ -30,5 +31,22 @@ describe("search", () => {
     expect(out.map((l) => l.id)).toEqual(["b-2", "b-7"]);
     expect(out[1].name).toBe("");
     expect(() => rankItems(buildItems({ links: out }), "a")).not.toThrow();
+  });
+});
+
+describe("app-scheme and relative links", () => {
+  it("normalizeUrl only prepends a scheme when there is none", () => {
+    for (const u of ["obsidian://vault/Notes", "steam://rungameid/10", "mailto:a@b.c", "ssh://nas", "/local/page", "./x", "#top"]) expect(normalizeUrl(u), u).toBe(u);
+    expect(normalizeUrl("github.com")).toBe("https://github.com");
+    expect(normalizeUrl("192.168.1.2:8080")).toBe("http://192.168.1.2:8080");
+  });
+  it("palette items keep an app link and drop a dangerous one", () => {
+    const links = [
+      { id: "a", name: "Notes", url: "obsidian://vault", icon: "", description: "" },
+      { id: "b", name: "Bad", url: "javascript:alert(1)", icon: "", description: "" },
+    ];
+    const items = buildItems({ links });
+    expect(items[0].url).toBe("obsidian://vault");
+    expect(items[1].url).toBe("");
   });
 });

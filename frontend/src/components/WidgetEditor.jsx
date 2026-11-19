@@ -2,16 +2,17 @@ import { useState } from "react";
 import Modal from "./Modal.jsx";
 import ConfigForm from "./ConfigForm.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
-import { WIDGET_TYPES, defaultConfig } from "../widgets/index.jsx";
+import { WIDGET_GROUPS, WIDGET_TYPES, carryConfig, migrateConfig } from "../widgets/index.jsx";
+import { groupWidgetTypes } from "./widgetMenu.js";
 
 /**
  * Edit an existing widget (type, service, config) or create a new one.
  * `widget` is {type, service_id, config, ...}; onSave receives the updated fields.
  */
-export default function WidgetEditor({ widget, services, integrations = [], dashboards = [], onSave, onDelete, onDuplicate, onMoveTo, onClose, onManageServices, onManageIntegrations }) {
+export default function WidgetEditor({ widget, services, integrations = [], integrationData = {}, dashboards = [], onSave, onDelete, onDuplicate, onMoveTo, onClose, onManageServices, onManageIntegrations }) {
   const [type, setType] = useState(widget.type);
   const [serviceId, setServiceId] = useState(widget.service_id ?? "");
-  const [config, setConfig] = useState(widget.config ?? {});
+  const [config, setConfig] = useState(() => migrateConfig(widget.type, widget.config));
   const def = WIDGET_TYPES[type] || { label: type, fields: [] };
   const isNew = !widget.id;
 
@@ -57,16 +58,21 @@ export default function WidgetEditor({ widget, services, integrations = [], dash
     >
       <div className="form">
         <div className="field">
-          <label>Type</label>
+          <label htmlFor="widget-type">Type</label>
           <select
+            id="widget-type"
             value={type}
             onChange={(e) => {
-              setType(e.target.value);
-              if (isNew) setConfig((cfg) => ({ ...defaultConfig(e.target.value), ...cfg }));
+              const to = e.target.value;
+              setType(to);
+              // An unsaved widget starts over on the new type's defaults, keeping only what both types declare and accept.
+              if (isNew) setConfig((cfg) => carryConfig(type, to, cfg));
             }}
           >
-            {Object.entries(WIDGET_TYPES).map(([k, d]) => (
-              <option key={k} value={k}>{d.label}</option>
+            {groupWidgetTypes(WIDGET_TYPES, WIDGET_GROUPS).map((s) => (
+              <optgroup key={s.group} label={s.group}>
+                {s.items.map((it) => <option key={it.type} value={it.type}>{it.label}</option>)}
+              </optgroup>
             ))}
           </select>
         </div>
@@ -93,7 +99,7 @@ export default function WidgetEditor({ widget, services, integrations = [], dash
           <div className="help">These settings can't be edited (invalid config). You can still delete this widget.</div>
         )}
       >
-        <ConfigForm fields={def.fields} value={config} onChange={setConfig} services={services} integrations={integrations} />
+        <ConfigForm fields={def.fields} value={config} onChange={setConfig} services={services} integrations={integrations} integrationData={integrationData} />
       </ErrorBoundary>
       {def.fields.some((f) => f.type === "integration") && (
         <div className="help" style={{ marginTop: 10 }}>

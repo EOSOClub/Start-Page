@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
+import { safeImageSrc } from "../safeUrl.js";
 
 // Resolves an icon string to something renderable:
 //  - "" / undefined  -> the site's favicon when `url` is given (and auto favicons are on),
@@ -17,7 +18,7 @@ const isEmoji = (s) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Em
 function resolveSrc(icon, url, autoFavicons) {
   if (!icon) return url && autoFavicons ? api.faviconUrl(url) : null;
   if (isEmoji(icon)) return null;
-  if (/^(https?:)?\/\//.test(icon) || icon.startsWith("/") || icon.startsWith("data:")) return icon;
+  if (/^(https?:)?\/\//.test(icon) || icon.startsWith("/") || icon.startsWith("data:")) return safeImageSrc(icon);
   return `${DASHBOARD_ICONS}${icon.toLowerCase().replace(/\s+/g, "-")}.png`;
 }
 

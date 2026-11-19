@@ -8,4 +8,10 @@ services:
       - ./data:/data
       # Optional: lets a Docker integration with url "unix:///var/run/docker.sock" see this host
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Optional authentication settings (the password itself is set in Settings -> Security):
+    # The image runs uvicorn with --no-proxy-headers; do not add FORWARDED_ALLOW_IPS or --proxy-headers.
+    # environment:
+    #   STARTPAGE_TRUSTED_PROXIES: "172.18.0.0/16"   # your reverse proxy's address(es)
+    #   STARTPAGE_AUTH_HEADER: "Remote-User"         # header your auth proxy sets
+    #   STARTPAGE_AUTH_DISABLE: "1"                  # lock-out recovery: turns enforcement off
     restart: unless-stopped

@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from .widgets import check_config, check_widget_layout
 
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards"])
 
@@ -67,22 +70,62 @@ def delete_dashboard(dashboard_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{dashboard_id}/layout", response_model=list[schemas.WidgetOut])
-def save_layout(dashboard_id: str, items: list[schemas.LayoutItem], db: Session = Depends(get_db)):
-    """Bulk-save positions/sizes after a drag or resize."""
+def save_layout(
+    dashboard_id: str,
+    items: list[schemas.LayoutItem],
+    breakpoint: Literal["lg", "sm"] = Query("lg", description="lg = desktop grid (default), sm = phone grid"),
+    db: Session = Depends(get_db),
+):
+    """Bulk-save positions/sizes after a drag or resize.
+
+    `breakpoint=sm` writes each widget's phone placement (`layout_sm`) instead; x + w must fit the
+    page's `columns_sm`, and `hidden` (when sent) sets "hide on phone". Without the parameter this is
+    the desktop call and `hidden` is ignored."""
     dash = _get(db, dashboard_id)
     by_id = {w.id: w for w in dash.widgets}
+    if breakpoint == "sm":
+        cols = schemas.phone_columns(dash.settings)
+        problems = []
+        for n, item in enumerate(items):  # validate everything before the first write
+            why = schemas.fit_error(item.x, item.w, cols)
+            if why:
+                problems.append({"loc": ["body", n], "msg": f"Widget {item.id[:40]}: {why}"})
+        if problems:
+            raise HTTPException(422, problems)
     for item in items:
         widget = by_id.get(item.id)
-        if widget:
+        if not widget:
+            continue
+        if breakpoint == "sm":
+            hidden = item.hidden if item.hidden is not None else bool((widget.layout_sm or {}).get("hidden"))
+            widget.layout_sm = {"x": item.x, "y": item.y, "w": item.w, "h": item.h, "hidden": hidden}
+        else:
             widget.x, widget.y, widget.w, widget.h = item.x, item.y, item.w, item.h
     db.commit()
     db.refresh(dash)
     return dash.widgets
 
 
+@router.delete("/{dashboard_id}/layout", status_code=204)
+def clear_phone_layout(
+    dashboard_id: str,
+    breakpoint: Literal["lg", "sm"] = Query(..., description="Only sm can be cleared"),
+    db: Session = Depends(get_db),
+):
+    """Remove every widget's phone placement on this page (they are appended automatically again)."""
+    if breakpoint != "sm":
+        raise HTTPException(422, "Only the phone layout (breakpoint=sm) can be cleared")
+    dash = _get(db, dashboard_id)
+    for widget in dash.widgets:
+        widget.layout_sm = None
+    db.commit()
+
+
 @router.post("/{dashboard_id}/widgets", response_model=schemas.WidgetOut, status_code=201)
 def create_widget(dashboard_id: str, payload: schemas.WidgetCreate, db: Session = Depends(get_db)):
-    _get(db, dashboard_id)
+    dash = _get(db, dashboard_id)
+    check_config(payload.type, payload.config)
+    check_widget_layout(dash, payload.x, payload.w, payload.layout_sm, "x" in payload.model_fields_set or "w" in payload.model_fields_set)
     widget = models.Widget(dashboard_id=dashboard_id, **payload.model_dump(exclude_none=True))
     db.add(widget)
     db.commit()

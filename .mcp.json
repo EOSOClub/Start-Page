@@ -4,7 +4,8 @@
       "command": "uv",
       "args": ["run", "--script", "mcp/startpage_mcp.py"],
       "env": {
-        "STARTPAGE_URL": "http://127.0.0.1:8471"
+        "STARTPAGE_URL": "http://127.0.0.1:8471",
+        "STARTPAGE_TOKEN": "${STARTPAGE_TOKEN:-}"
       }
     }
   }

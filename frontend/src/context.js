@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 /**
  * App-wide values widgets may need without prop drilling:
- *   settings, services, dashboards, links, health, editMode,
+ *   settings, services, dashboards, links, health, editMode, canWrite (false for view-only guests),
  *   goToPage(id), updateWidgetConfig(id, config, {keepalive})
  */
 export const AppContext = createContext({ settings: {}, services: [], dashboards: [], links: [], health: {} });

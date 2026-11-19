@@ -1,0 +1,193 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "infrastructure",
+  "title": "Infrastructure",
+  "description": "Host gauges (CPU, memory, disk), Proxmox guests, TrueNAS pools and Docker containers.",
+  "tags": [
+    "servers",
+    "homelab"
+  ],
+  "requires": [
+    "docker",
+    "host",
+    "proxmox",
+    "truenas"
+  ],
+  "name": "Infrastructure",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "This host",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "gauge",
+      "x": 0,
+      "y": 1,
+      "w": 4,
+      "h": 4,
+      "config": {
+        "integration_id": "host",
+        "stat_key": "cpu",
+        "title": "CPU",
+        "style": "arc",
+        "min": 0,
+        "max": 100,
+        "warn": 70,
+        "bad": 90
+      }
+    },
+    {
+      "type": "gauge",
+      "x": 4,
+      "y": 1,
+      "w": 4,
+      "h": 4,
+      "config": {
+        "integration_id": "host",
+        "stat_key": "mem",
+        "title": "Memory",
+        "style": "arc",
+        "min": 0,
+        "max": 100,
+        "warn": 75,
+        "bad": 90
+      }
+    },
+    {
+      "type": "gauge",
+      "x": 8,
+      "y": 1,
+      "w": 4,
+      "h": 4,
+      "config": {
+        "integration_id": "host",
+        "stat_key": "disk",
+        "title": "Disk",
+        "style": "arc",
+        "min": 0,
+        "max": 100,
+        "warn": 80,
+        "bad": 92
+      }
+    },
+    {
+      "type": "system",
+      "x": 12,
+      "y": 1,
+      "w": 12,
+      "h": 4,
+      "config": {
+        "integration_id": "host",
+        "title": "System"
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 5,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Virtualisation and storage",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "proxmox",
+      "x": 0,
+      "y": 6,
+      "w": 14,
+      "h": 7,
+      "config": {
+        "integration_id": "proxmox",
+        "title": "Proxmox",
+        "show": "both",
+        "limit": 12
+      }
+    },
+    {
+      "type": "truenas",
+      "x": 14,
+      "y": 6,
+      "w": 10,
+      "h": 7,
+      "config": {
+        "integration_id": "truenas",
+        "title": "TrueNAS",
+        "show": "both",
+        "limit": 8
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 13,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Containers",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "docker",
+      "x": 0,
+      "y": 14,
+      "w": 24,
+      "h": 6,
+      "config": {
+        "integration_id": "docker",
+        "title": "Docker",
+        "compact": false,
+        "allowActions": false
+      }
+    }
+  ],
+  "services": [],
+  "integrations": [
+    {
+      "ref": "host",
+      "type": "host",
+      "name": "This host"
+    },
+    {
+      "ref": "proxmox",
+      "type": "proxmox",
+      "name": "Proxmox"
+    },
+    {
+      "ref": "truenas",
+      "type": "truenas",
+      "name": "TrueNAS"
+    },
+    {
+      "ref": "docker",
+      "type": "docker",
+      "name": "Docker"
+    }
+  ]
+}

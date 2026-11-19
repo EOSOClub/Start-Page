@@ -2,8 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#6c8cff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Start Page" />
+    <!-- Served by the backend (dynamic: title and colours come from Settings). use-credentials lets a signed-in
+         browser get its own title; anonymous callers get the generic one. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Start Page</title>
     <script>
       // Apply the cached theme before the app loads so a new tab doesn't flash the wrong colours.
@@ -12,7 +21,10 @@
         if (s) {
           var r = document.documentElement;
           r.dataset.theme = s.theme || "system";
-          if (s.accent) r.style.setProperty("--accent", s.accent);
+          if (s.accent) {
+            r.style.setProperty("--accent", s.accent);
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", s.accent);
+          }
           if (s.background_color) r.style.setProperty("--bg", s.background_color);
           if (s.title) document.title = s.title;
         }

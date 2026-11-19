@@ -1,19 +1,21 @@
 import { useState } from "react";
-import DOMPurify from "dompurify";
+import { safeHref, safeHttpUrl } from "../safeUrl.js";
+import { plainText } from "../sanitize.js";
 import Icon from "./Icon.jsx";
 import { api } from "../api.js";
+import { useApp } from "../context.js";
 import { TRANSPARENT_FIELD } from "./startpage.jsx";
 
 /* Widgets backed by Integrations (Docker, Uptime Kuma, JSON) and service dependencies. */
 
-function useIntegration(widget, integrations, integrationData, type) {
+export function useIntegration(widget, integrations, integrationData, type) {
   const id = widget.config.integration_id;
   const integ = integrations.find((i) => i.id === id && (!type || i.type === type));
   const data = id ? integrationData[id] : null;
   return { integ, data };
 }
 
-function Header({ title, right }) {
+export function Header({ title, right }) {
   return (
     <div className="group-title row">
       <span>{title}</span>
@@ -23,7 +25,7 @@ function Header({ title, right }) {
   );
 }
 
-function Problem({ integ, data, type }) {
+export function Problem({ integ, data, type }) {
   if (!integ) return <div className="muted pad">Select a {type} integration in widget settings.</div>;
   if (!data) return <div className="muted pad">Waiting for first fetch…</div>;
   if (!data.ok && !data.data) return <div className="pad error">Error: {data.error}</div>;
@@ -43,6 +45,7 @@ export const DockerWidget = {
   ],
   Render: ({ widget, integrations, integrationData, onRefresh }) => {
     const { integ, data } = useIntegration(widget, integrations, integrationData, "docker");
+    const { canWrite = true } = useApp(); // view-only guests get no start/stop/restart buttons
     const [busy, setBusy] = useState("");
     const problem = <Problem integ={integ} data={data} type="Docker" />;
     if (!integ || !data || (!data.ok && !data.data)) return problem;
@@ -78,7 +81,7 @@ export const DockerWidget = {
                     <td><strong>{r.name}</strong>{r.project && <span className="muted"> · {r.project}</span>}</td>
                     <td className="muted">{r.status}</td>
                     <td className="muted nowrap">{r.ports.join(", ")}</td>
-                    {c.allowActions && (
+                    {c.allowActions && canWrite && (
                       <td className="right nowrap">
                         {r.state === "running" ? (
                           <>
@@ -201,7 +204,8 @@ export const StatusWidget = {
         </div>
       </div>
     );
-    return c.link ? <a href={c.link} draggable={false} style={{ display: "block", height: "100%" }}>{body}</a> : body;
+    const link = safeHref(c.link);
+    return link ? <a href={link} draggable={false} style={{ display: "block", height: "100%" }}>{body}</a> : body;
   },
 };
 
@@ -269,8 +273,8 @@ export const RssWidget = {
           {entries.map((e, i) => (
             <div key={i}>
               <div className="kuma-row">
-                {RSS_LINK.test(e.link || "") ? (
-                  <a className="kuma-name" href={e.link} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false}>
+                {RSS_LINK.test(e.link || "") && safeHttpUrl(e.link) ? (
+                  <a className="kuma-name" href={safeHttpUrl(e.link)} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false}>
                     {e.title || "(untitled)"}
                   </a>
                 ) : (
@@ -279,7 +283,7 @@ export const RssWidget = {
                 <span className="muted nowrap">{e.published_parsed != null ? new Date(e.published_parsed * 1000).toLocaleDateString() : ""}</span>
               </div>
               {c.show_description && e.summary && (
-                <div className="muted" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(e.summary) }} />
+                <div className="muted">{plainText(e.summary)}</div>
               )}
             </div>
           ))}
@@ -310,7 +314,7 @@ export const TopologyWidget = {
       const h = health[s.id] ?? { status: s.health_enabled ? "unknown" : "disabled" };
       return (
         <li>
-          <a href={s.url} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false} className="topo-node">
+          <a href={safeHref(s.url) ?? undefined} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false} className="topo-node">
             <span className={`status-dot status-${h.status}`} />
             <Icon icon={s.icon} fallback={s.name} size={18} />
             <span>{s.name}</span>

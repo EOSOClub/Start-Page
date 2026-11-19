@@ -5,6 +5,12 @@ import "react-resizable/css/styles.css";
 import "./styles.css";
 import App from "./App.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { initInstallPrompt } from "./pwa.js";
+import { registerServiceWorker } from "./sw/register.js";
+
+initInstallPrompt(); // before the browser can fire beforeinstallprompt
+// Production builds on a secure origin only; after load, so it never competes with the first paint.
+window.addEventListener("load", () => registerServiceWorker());
 
 /*
  * Last line of defence for a throw in App's own render. It renders outside AppContext,

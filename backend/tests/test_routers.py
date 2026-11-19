@@ -323,16 +323,17 @@ def test_widget_patch_can_unlink_service(client):
         assert res.json()["service_id"] is None
 
 
-def test_import_with_bad_settings_is_rejected_and_writes_nothing(client):
-    # Used to commit the bad value and then 500 on settings, export and every backup.
+def test_import_with_bad_settings_drops_the_key_with_a_warning(client):
+    # Used to commit the bad value and then 500 on settings, export and every backup. An import never
+    # fails for a bad setting: the key is dropped and reported.
     bundle = {
         "services": [],
         "dashboards": [{"id": "imported", "name": "Imported", "widgets": []}],
         "settings": {"backup_keep": "many"},
     }
     res = client.post("/api/config/import", json=bundle, headers=HEADERS)
-    assert res.status_code == 422, res.text
-    assert "backup_keep" in res.text
+    assert res.status_code == 200, res.text
+    assert any("backup_keep" in w for w in res.json()["warnings"])
     assert client.get("/api/settings").json()["backup_keep"] == 14
     assert client.get("/api/config/export").status_code == 200
 

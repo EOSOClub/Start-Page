@@ -8,6 +8,7 @@ import FitText from "./FitText.jsx";
 import Icon from "./Icon.jsx";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
+import { safeHref } from "../safeUrl.js";
 import { SEARCH_ENGINES, buildItems, hostOf, looksLikeUrl, normalizeUrl, openUrl, queryTarget, rankItems } from "../search.js";
 
 /** Shared field: render the widget without the card background/border. */
@@ -355,7 +356,7 @@ export const BookmarksWidget = {
               <a
                 key={l.id || i}
                 className="group-item bm-item"
-                href={normalizeUrl(l.url)}
+                href={safeHref(normalizeUrl(l.url)) ?? undefined}
                 target={newTab ? "_blank" : "_self"}
                 rel="noreferrer"
                 draggable={false}

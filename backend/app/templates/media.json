@@ -1,0 +1,174 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "media",
+  "title": "Media",
+  "description": "Now playing on Jellyfin, upcoming episodes and movies, download queues and your media apps. Shows services in the category \"Media\".",
+  "tags": [
+    "media",
+    "arr"
+  ],
+  "requires": [
+    "jellyfin",
+    "qbittorrent",
+    "radarr",
+    "sabnzbd",
+    "sonarr"
+  ],
+  "name": "Media",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 0,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Now playing",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "jellyfin",
+      "x": 0,
+      "y": 1,
+      "w": 16,
+      "h": 5,
+      "config": {
+        "integration_id": "jellyfin",
+        "title": "Jellyfin",
+        "show": "both",
+        "layout": "tiles",
+        "limit": 6
+      }
+    },
+    {
+      "type": "text",
+      "x": 16,
+      "y": 1,
+      "w": 8,
+      "h": 5,
+      "config": {
+        "content": "### Media apps\n\nAdd your media apps (Jellyfin, Sonarr, Radarr ...) as services, then add a **Group** widget here and choose them. A fresh install has none yet."
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 6,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Upcoming",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "sonarr",
+      "x": 0,
+      "y": 7,
+      "w": 12,
+      "h": 6,
+      "config": {
+        "integration_id": "sonarr",
+        "title": "Sonarr",
+        "show": "both",
+        "limit": 6
+      }
+    },
+    {
+      "type": "radarr",
+      "x": 12,
+      "y": 7,
+      "w": 12,
+      "h": 6,
+      "config": {
+        "integration_id": "radarr",
+        "title": "Radarr",
+        "show": "both",
+        "limit": 6
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 13,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Downloads",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "qbittorrent",
+      "x": 0,
+      "y": 14,
+      "w": 12,
+      "h": 5,
+      "config": {
+        "integration_id": "qbittorrent",
+        "title": "qBittorrent",
+        "show": "both",
+        "limit": 6
+      }
+    },
+    {
+      "type": "sabnzbd",
+      "x": 12,
+      "y": 14,
+      "w": 12,
+      "h": 5,
+      "config": {
+        "integration_id": "sabnzbd",
+        "title": "SABnzbd",
+        "show": "both",
+        "limit": 6
+      }
+    }
+  ],
+  "services": [],
+  "integrations": [
+    {
+      "ref": "jellyfin",
+      "type": "jellyfin",
+      "name": "Jellyfin"
+    },
+    {
+      "ref": "sonarr",
+      "type": "sonarr",
+      "name": "Sonarr"
+    },
+    {
+      "ref": "radarr",
+      "type": "radarr",
+      "name": "Radarr"
+    },
+    {
+      "ref": "qbittorrent",
+      "type": "qbittorrent",
+      "name": "qBittorrent"
+    },
+    {
+      "ref": "sabnzbd",
+      "type": "sabnzbd",
+      "name": "SABnzbd"
+    }
+  ]
+}

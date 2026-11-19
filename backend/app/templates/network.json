@@ -1,0 +1,144 @@
+{
+  "format": "startpage-page",
+  "version": 1,
+  "id": "network",
+  "title": "Network",
+  "description": "DNS filtering with the blocking switch (Pi-hole), UniFi status, internet speed tests and uptime bars for your services.",
+  "tags": [
+    "network",
+    "dns"
+  ],
+  "requires": [
+    "pihole",
+    "speedtest_tracker",
+    "unifi"
+  ],
+  "name": "Network",
+  "columns": 24,
+  "row_height": 40,
+  "settings": {
+    "gap": 10,
+    "snap": "cell",
+    "show_grid": false
+  },
+  "widgets": [
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 1,
+      "config": {
+        "text": "DNS",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "heading",
+      "x": 12,
+      "y": 0,
+      "w": 12,
+      "h": 1,
+      "config": {
+        "text": "Network",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "pihole",
+      "x": 0,
+      "y": 1,
+      "w": 12,
+      "h": 4,
+      "config": {
+        "integration_id": "pihole",
+        "title": "Pi-hole"
+      }
+    },
+    {
+      "type": "unifi",
+      "x": 12,
+      "y": 1,
+      "w": 12,
+      "h": 4,
+      "config": {
+        "integration_id": "unifi",
+        "title": "UniFi",
+        "show": "stats"
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 5,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Internet speed",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "speedtest_tracker",
+      "x": 0,
+      "y": 6,
+      "w": 24,
+      "h": 3,
+      "config": {
+        "integration_id": "speedtest",
+        "title": "Speedtest"
+      }
+    },
+    {
+      "type": "heading",
+      "x": 0,
+      "y": 9,
+      "w": 24,
+      "h": 1,
+      "config": {
+        "text": "Uptime",
+        "size": "m",
+        "align": "left",
+        "uppercase": true,
+        "bar": true
+      }
+    },
+    {
+      "type": "uptime",
+      "x": 0,
+      "y": 10,
+      "w": 24,
+      "h": 5,
+      "config": {
+        "title": "Services, last 24 hours"
+      }
+    }
+  ],
+  "services": [],
+  "integrations": [
+    {
+      "ref": "pihole",
+      "type": "pihole",
+      "name": "Pi-hole"
+    },
+    {
+      "ref": "unifi",
+      "type": "unifi",
+      "name": "UniFi"
+    },
+    {
+      "ref": "speedtest",
+      "type": "speedtest_tracker",
+      "name": "Speedtest Tracker"
+    }
+  ]
+}
