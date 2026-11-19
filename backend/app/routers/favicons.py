@@ -25,6 +25,7 @@ ICON_TTL = 7 * 86400
 MISS_TTL = 6 * 3600  # retry sites that had no usable icon after this long
 MAX_HTML = 512 * 1024
 MAX_ICON = 1024 * 1024
+MAX_TITLES = 50  # page titles remembered per origin
 HEADERS = {
     "User-Agent": "StartPage/1.0 (self-hosted start page; favicon fetcher)",
     "Accept": "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.8",
@@ -40,8 +41,12 @@ def _normalize(url: str) -> tuple[str, str]:
     url = url.strip()
     if "://" not in url:
         url = "http://" + url
-    parts = urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.hostname:
+    try:
+        parts = urlsplit(url)
+        ok = parts.scheme in ("http", "https") and bool(parts.hostname)
+    except ValueError:  # e.g. an unclosed IPv6 bracket
+        ok = False
+    if not ok:
         raise HTTPException(400, "Not an http(s) URL")
     return url, f"{parts.scheme}://{parts.netloc}"
 
@@ -124,8 +129,11 @@ def _sniff_type(content_type: str, body: bytes) -> str:
     return "image/svg+xml"
 
 
-async def _fetch(url: str, origin: str) -> dict:
-    """Fetch title + best icon for a site. Returns meta dict and writes the icon to disk."""
+async def _fetch(url: str, origin: str, titles: dict | None = None) -> dict:
+    """Fetch title + best icon for a site. Returns meta dict and writes the icon to disk.
+
+    The icon is cached per origin, but a title belongs to one page, so titles are kept
+    per URL in meta["titles"] (`titles` carries over the ones already known)."""
     key = hashlib.sha1(origin.encode()).hexdigest()
     meta = {"origin": origin, "title": "", "type": None, "fetched": time.time()}
     async with httpx.AsyncClient(timeout=TIMEOUT, verify=False, follow_redirects=True, headers=HEADERS) as client:
@@ -161,28 +169,39 @@ async def _fetch(url: str, origin: str) -> dict:
             except (httpx.HTTPError, httpx.InvalidURL):
                 continue
 
+    known = {k: v for k, v in (titles or {}).items() if k != url}
+    meta["titles"] = {**dict(list(known.items())[-(MAX_TITLES - 1):]), url: meta["title"]}
     (CACHE_DIR / f"{key}.json").write_text(json.dumps(meta))
     return meta
 
 
-async def _meta(url: str) -> tuple[dict, str]:
+async def _meta(url: str, want_title: bool = False) -> tuple[dict, str, str]:
+    """Cached (meta, cache key, normalized url). `want_title` refetches when this exact page's title isn't cached."""
     url, origin = _normalize(url)
     key = hashlib.sha1(origin.encode()).hexdigest()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     meta_path = CACHE_DIR / f"{key}.json"
     lock = _locks.setdefault(key, asyncio.Lock())
     async with lock:
+        titles: dict = {}
         if meta_path.is_file():
-            meta = json.loads(meta_path.read_text())
-            ttl = ICON_TTL if meta.get("type") else MISS_TTL
-            if time.time() - meta.get("fetched", 0) < ttl:
-                return meta, key
-        return await _fetch(url, origin), key
+            try:
+                meta = json.loads(meta_path.read_text())
+            except ValueError:  # truncated by a crash mid-write: treat as a miss
+                meta = None
+            if isinstance(meta, dict):
+                ttl = ICON_TTL if meta.get("type") else MISS_TTL
+                fresh = time.time() - meta.get("fetched", 0) < ttl
+                if isinstance(meta.get("titles"), dict):
+                    titles = meta["titles"] if fresh else {}
+                if fresh and (not want_title or url in titles):
+                    return meta, key, url
+        return await _fetch(url, origin, titles), key, url
 
 
 @router.get("/favicon")
 async def favicon(url: str = Query(...)):
-    meta, key = await _meta(url)
+    meta, key, _ = await _meta(url)
     img = CACHE_DIR / f"{key}.img"
     if not meta.get("type") or not img.is_file():
         raise HTTPException(404, "No icon")
@@ -195,5 +214,5 @@ async def favicon(url: str = Query(...)):
 
 @router.get("/sitemeta")
 async def sitemeta(url: str = Query(...)):
-    meta, _ = await _meta(url)
-    return {"title": meta.get("title", ""), "has_icon": bool(meta.get("type"))}
+    meta, _, url = await _meta(url, want_title=True)
+    return {"title": meta.get("titles", {}).get(url, meta.get("title", "")), "has_icon": bool(meta.get("type"))}

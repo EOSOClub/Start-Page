@@ -61,7 +61,7 @@ async def _fetch_docker(cfg: dict) -> Any:
             "image": c.get("Image"),
             "state": c.get("State"),
             "status": c.get("Status"),
-            "ports": sorted({f"{p.get('PublicPort')}->{p.get('PrivatePort')}" for p in c.get("Ports", []) if p.get("PublicPort")}),
+            "ports": sorted({f"{p.get('PublicPort')}->{p.get('PrivatePort')}" for p in (c.get("Ports") or []) if p.get("PublicPort")}),
             "project": (c.get("Labels") or {}).get("com.docker.compose.project", ""),
         })
     rows.sort(key=lambda r: (r["project"], r["name"]))

@@ -168,6 +168,39 @@ describe("useHistory", () => {
     expect(result.current.failedLabel).toBeUndefined();
   });
 
+  it("a push that lands during an in-flight undo is kept; only the undone entry moves", async () => {
+    const { result } = renderHook(() => useHistory());
+    let finishUndo;
+    act(() => result.current.push(entry("A")));
+    act(() => result.current.push(entry("B", { undo: vi.fn(() => new Promise((resolve) => { finishUndo = resolve; })) })));
+    let undoing;
+    act(() => { undoing = result.current.undo(); });
+    act(() => result.current.push(entry("C"))); // e.g. a drag whose save resolved first
+    await act(async () => { finishUndo(); await undoing; });
+    // Used to slice off the top by position: C vanished and B sat on both stacks.
+    expect(result.current.undoLabel).toBe("C");
+    expect(result.current.redoLabel).toBe("B");
+    await act(() => result.current.undo());
+    expect(result.current.undoLabel).toBe("A");
+  });
+
+  it("isTop() is true only while that step is next to undo or redo", async () => {
+    const { result } = renderHook(() => useHistory());
+    let a;
+    act(() => { a = result.current.push(entry("A")); });
+    expect(result.current.isTop(a)).toBe(true);
+    let b;
+    act(() => { b = result.current.push(entry("B")); });
+    expect(result.current.isTop(a)).toBe(false); // a toast's "Undo" for A must not undo B
+    expect(result.current.isTop(b)).toBe(true);
+    let undone;
+    await act(async () => { undone = await result.current.undo(); });
+    expect(result.current.isTop(undone)).toBe(true); // B is next to redo
+    act(() => result.current.push(entry("C")));
+    expect(result.current.isTop(undone)).toBe(false); // the redo stack was cleared
+    expect(result.current.isTop(null)).toBe(false);
+  });
+
   it("clear() empties both stacks and the failed step", async () => {
     const { result } = renderHook(() => useHistory());
     act(() => result.current.push(entry("A")));

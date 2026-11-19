@@ -294,3 +294,181 @@ def test_revision_counts_only_successful_external_writes(client):
     assert res.status_code == 201
     assert rev() == start + 1
     assert client.get("/api/revision").json()["boot"]
+
+
+# ---------- 2026-11-18 bug run ----------
+def test_patch_with_explicit_null_does_not_corrupt_json_columns(client):
+    # {"config": null} used to store JSON null, after which every read of the page was a 500.
+    page = _create_dashboard(client, settings={"gap": 6})
+    w = _create_widget(client, page["id"], config={"name": "A"})
+    res = client.patch(f"/api/widgets/{w['id']}", json={"config": None, "x": 3}, headers=HEADERS)
+    assert res.status_code == 200, res.text
+    assert res.json()["config"] == {"name": "A"} and res.json()["x"] == 3
+    res = client.patch(f"/api/dashboards/{page['id']}", json={"settings": None, "name": None}, headers=HEADERS)
+    assert res.status_code == 200, res.text
+    assert res.json()["settings"] == {"gap": 6} and res.json()["name"] == "Home"
+    assert client.get("/api/dashboards").status_code == 200
+    assert client.get(f"/api/dashboards/{page['id']}").status_code == 200
+    assert client.get("/api/config/export").status_code == 200
+
+
+def test_widget_patch_can_unlink_service(client):
+    svc = client.post("/api/services", json={"name": "S", "host": "h"}, headers=HEADERS).json()
+    page = _create_dashboard(client)
+    w = _create_widget(client, page["id"], type="service", service_id=svc["id"])
+    for empty in (None, ""):
+        client.patch(f"/api/widgets/{w['id']}", json={"service_id": svc["id"]}, headers=HEADERS)
+        res = client.patch(f"/api/widgets/{w['id']}", json={"service_id": empty}, headers=HEADERS)
+        assert res.status_code == 200, res.text
+        assert res.json()["service_id"] is None
+
+
+def test_import_with_bad_settings_is_rejected_and_writes_nothing(client):
+    # Used to commit the bad value and then 500 on settings, export and every backup.
+    bundle = {
+        "services": [],
+        "dashboards": [{"id": "imported", "name": "Imported", "widgets": []}],
+        "settings": {"backup_keep": "many"},
+    }
+    res = client.post("/api/config/import", json=bundle, headers=HEADERS)
+    assert res.status_code == 422, res.text
+    assert "backup_keep" in res.text
+    assert client.get("/api/settings").json()["backup_keep"] == 14
+    assert client.get("/api/config/export").status_code == 200
+
+
+def test_bad_stored_setting_falls_back_to_default(client, session):
+    from app import models
+
+    session.add(models.AppSetting(key="app", value={"backup_keep": "many", "title": "Mine"}))
+    session.commit()
+    got = client.get("/api/settings")
+    assert got.status_code == 200, got.text
+    assert got.json()["backup_keep"] == 14 and got.json()["title"] == "Mine"
+    # An unrelated save heals the stored value instead of failing on it.
+    res = client.patch("/api/settings", json={"accent": "#ff0000"}, headers=HEADERS)
+    assert res.status_code == 200, res.text
+    assert res.json()["backup_keep"] == 14 and res.json()["accent"] == "#ff0000"
+
+
+def test_invalid_backup_file_is_422_not_500(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(backups, "BACKUP_DIR", tmp_path)
+    (tmp_path / "truncated.json").write_text('{"services": [', encoding="utf-8")
+    (tmp_path / "list.json").write_text("[1, 2]", encoding="utf-8")
+    (tmp_path / "other.json").write_text('{"hello": "world"}', encoding="utf-8")
+    for name in ("truncated.json", "list.json", "other.json"):
+        assert client.get(f"/api/backups/{name}").status_code == 422, name
+        assert client.post(f"/api/backups/{name}/restore", headers=HEADERS).status_code == 422, name
+    assert client.get("/api/backups/missing.json").status_code == 404
+    assert {p.name for p in tmp_path.glob("*.json")} == {"truncated.json", "list.json", "other.json"}  # no pre-restore backup
+
+
+@pytest.mark.parametrize("label", ["auto", "pre-auto"])
+def test_manual_backup_cannot_use_the_auto_suffix(client, monkeypatch, tmp_path, label):
+    monkeypatch.setattr(backups, "BACKUP_DIR", tmp_path)
+    monkeypatch.setattr(
+        backups, "_export_bundle", lambda: {"services": [], "dashboards": [], "integrations": [], "settings": {}}
+    )
+    res = client.post("/api/backups", params={"label": label}, headers=HEADERS)
+    assert res.status_code == 201, res.text
+    assert not list(tmp_path.glob("*-auto.json"))
+    assert res.json()["name"].endswith(f"-{label}-manual.json")
+
+
+def test_integration_patch_rejects_unknown_type(client, session):
+    from app import models
+
+    session.add(models.Integration(id="i1", name="Feed", type="rss", enabled=False, config={}))
+    session.commit()
+    res = client.patch("/api/integrations/i1", json={"type": "dockerr"}, headers=HEADERS)
+    assert res.status_code == 400, res.text
+    assert client.get("/api/integrations").json()[0]["type"] == "rss"
+
+
+def test_import_keeps_a_free_widget_id_so_page_restore_keeps_undo_targets(client):
+    page = _create_dashboard(client)
+    w = _create_widget(client, page["id"], config={"name": "A"})
+    detail = client.get(f"/api/dashboards/{page['id']}").json()
+    assert client.delete(f"/api/dashboards/{page['id']}", headers=HEADERS).status_code == 204
+
+    # What the app's "undo delete page" sends.
+    bundle = {"services": [], "integrations": [], "settings": {}, "dashboards": [detail]}
+    assert client.post("/api/config/import?replace=false", json=bundle, headers=HEADERS).status_code == 200
+    assert [x["id"] for x in client.get(f"/api/dashboards/{page['id']}").json()["widgets"]] == [w["id"]]
+    # An older undo step for that widget reaches it again.
+    assert client.patch(f"/api/widgets/{w['id']}", json={"x": 7}, headers=HEADERS).status_code == 200
+
+    # Re-importing over the live page keeps the id too; a repeat inside one bundle gets a fresh one.
+    detail["widgets"].append(dict(detail["widgets"][0]))
+    assert client.post("/api/config/import?replace=false", json=bundle, headers=HEADERS).status_code == 200
+    ids = [x["id"] for x in client.get(f"/api/dashboards/{page['id']}").json()["widgets"]]
+    assert len(ids) == 2 and len(set(ids)) == 2 and w["id"] in ids
+
+
+def test_import_rejects_unknown_integration_type_before_writing(client):
+    bundle = {
+        "services": [],
+        "dashboards": [{"id": "imported", "name": "Imported", "widgets": []}],
+        "integrations": [{"id": "i1", "name": "X", "type": "dockerr"}],
+    }
+    res = client.post("/api/config/import?replace=true", json=bundle, headers=HEADERS)
+    assert res.status_code == 422, res.text
+    assert "dockerr" in res.text
+    assert client.get("/api/dashboards").json() == []
+    assert client.get("/api/integrations").json() == []
+
+
+def test_reorder_dashboards_is_all_or_nothing(client):
+    a, b, c = (_create_dashboard(client, name=n) for n in "ABC")
+    res = client.put("/api/dashboards/order", json=[c["id"], a["id"], b["id"]], headers=HEADERS)
+    assert res.status_code == 200, res.text
+    assert [d["name"] for d in res.json()] == ["C", "A", "B"]
+    res = client.put("/api/dashboards/order", json=[b["id"], "missing", a["id"]], headers=HEADERS)
+    assert res.status_code == 404
+    assert [d["name"] for d in client.get("/api/dashboards").json()] == ["C", "A", "B"]
+
+
+def test_icon_search_rejects_negative_limit(client):
+    assert client.get("/api/icons", params={"q": "x", "limit": -1}).status_code == 422
+
+
+@pytest.mark.parametrize("url", ["http://[::1", "http://[bad"])
+def test_malformed_url_is_400_not_500(client, url):
+    assert client.get("/api/favicon", params={"url": url}).status_code == 400
+    assert client.get("/api/sitemeta", params={"url": url}).status_code == 400
+
+
+def test_sitemeta_title_is_per_page_not_per_origin(client, monkeypatch, tmp_path):
+    import httpx
+
+    from app.routers import favicons
+
+    pages: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/favicon.ico":
+            return httpx.Response(200, content=b"\x89PNG....", headers={"content-type": "image/png"})
+        pages.append(request.url.path)
+        return httpx.Response(200, html=f"<html><head><title>Title of {request.url.path}</title></head></html>")
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(favicons, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(
+        favicons.httpx,
+        "AsyncClient",
+        lambda **kw: real(transport=httpx.MockTransport(handler), **{k: v for k, v in kw.items() if k != "verify"}),
+    )
+
+    def title(path):
+        return client.get("/api/sitemeta", params={"url": f"https://site.example{path}"}).json()["title"]
+
+    assert title("/a") == "Title of /a"
+    assert title("/b") == "Title of /b"  # used to answer "Title of /a" for 7 days
+    assert title("/a") == "Title of /a"
+    assert pages == ["/a", "/b"]  # each page fetched once; the third call came from the cache
+    # The icon stays cached per origin: asking for it must not refetch any page.
+    assert client.get("/api/favicon", params={"url": "https://site.example/c"}).status_code == 200
+    assert pages == ["/a", "/b"]
+    # A meta file cut off mid-write is a cache miss, not a permanent 500.
+    next(tmp_path.glob("*.json")).write_text('{"origin": ', encoding="utf-8")
+    assert title("/a") == "Title of /a"

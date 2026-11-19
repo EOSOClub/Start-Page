@@ -29,6 +29,7 @@ export const api = {
   createDashboard: (data) => request("POST", "/dashboards", data),
   updateDashboard: (id, data) => request("PATCH", `/dashboards/${id}`, data),
   deleteDashboard: (id) => request("DELETE", `/dashboards/${id}`),
+  reorderDashboards: (ids) => request("PUT", "/dashboards/order", ids),
   saveLayout: (id, items) => request("PUT", `/dashboards/${id}/layout`, items),
   // widgets
   createWidget: (dashboardId, data) => request("POST", `/dashboards/${dashboardId}/widgets`, data),

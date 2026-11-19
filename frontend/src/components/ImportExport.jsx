@@ -45,7 +45,11 @@ export default function ImportExport({ onImported, onClose }) {
             <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
             <span>Replace everything (wipe current config first)</span>
           </label>
-          <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => e.target.files[0] && doImport(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => {
+            const file = e.target.files[0];
+            e.target.value = ""; // so choosing the same file again (after a failure or a cancelled confirm) fires change
+            if (file) doImport(file);
+          }} />
           <button onClick={() => fileRef.current.click()}>Choose file…</button>
           {msg && <p className={msg.startsWith("Import failed") ? "error" : "ok"}>{msg}</p>}
         </section>

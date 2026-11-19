@@ -1,11 +1,11 @@
 # Start Page
 
-A self-hosted homelab start page. `backend/` is FastAPI + SQLAlchemy + SQLite on port 8000.
+A self-hosted homelab start page. `backend/` is FastAPI + SQLAlchemy + SQLite on port 8471.
 `frontend/` is React 19 + Vite + react-grid-layout. See README.md for features and the API.
 
 ## Run
-- Docker: `docker compose up -d --build` → http://localhost:8000 (data in `./data`)
-- Dev: `./dev.ps1` (uvicorn on 8000 plus Vite on 5173, which proxies `/api`)
+- Docker: `docker compose up -d --build` → http://localhost:8471 (data in `./data`)
+- Dev: `./dev.ps1` (uvicorn on 8471 plus Vite on 5173, which proxies `/api`)
 - Node is managed by nvm-windows. If `node` isn't on PATH, prepend `C:\nvm4w\nodejs`.
 
 ## Tests

@@ -39,7 +39,9 @@ async def create_integration(payload: schemas.IntegrationCreate, db: Session = D
 @router.patch("/{integration_id}", response_model=schemas.IntegrationOut)
 async def update_integration(integration_id: str, payload: schemas.IntegrationUpdate, db: Session = Depends(get_db)):
     integ = _get(db, integration_id)
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    if payload.type is not None and payload.type not in integrations.TYPES:
+        raise HTTPException(400, f"type must be one of {integrations.TYPES}")
+    for k, v in schemas.patch_data(payload).items():
         setattr(integ, k, v)
     db.commit()
     db.refresh(integ)

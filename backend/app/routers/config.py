@@ -1,8 +1,9 @@
 """Whole-configuration import/export as a single JSON bundle."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
+from ..integrations import TYPES as integration_types
 from ..database import get_db
 from .services import to_out as service_out
 from .settings import load as load_settings, save as save_settings
@@ -26,6 +27,12 @@ def import_config(
     db: Session = Depends(get_db),
     replace: bool = Query(False, description="Wipe existing config before importing"),
 ):
+    # Validate before the first write, so a bad bundle changes nothing.
+    unknown = sorted({i.type for i in bundle.integrations} - set(integration_types))
+    if unknown:
+        raise HTTPException(422, f"Unknown integration type(s) {unknown}; valid: {list(integration_types)}")
+
+    widget_ids: set[str] = set()  # ids this import has already used
     if replace:
         db.query(models.Widget).delete()
         db.query(models.Dashboard).delete()
@@ -58,12 +65,18 @@ def import_config(
         db.flush()
         for w in d.widgets:
             wd = w.model_dump()
-            # Widget.id is a leaf key (nothing FKs it) and the frontend refetches
-            # everything after import, so re-inserting a moved widget with a fresh
-            # id is invisible to the user — and makes the same-id collision with a
-            # live widget impossible by construction (imported widget ids regenerate;
-            # every other entity keeps the documented "same id = updated" contract).
-            wd.pop("id", None)
+            # A widget keeps its id when that id is free, so undo steps recorded before a
+            # page was deleted still address the right widget once the page is restored.
+            # An id that is still live elsewhere (a widget moved between pages in the
+            # bundle) or repeated inside the bundle gets a fresh one instead: Widget.id
+            # is a leaf key (nothing FKs it), so that is invisible to the user and a
+            # same-id collision stays impossible. This page's own old widgets were
+            # deleted and flushed above, so their ids count as free.
+            wid = wd.get("id")
+            if not wid or wid in widget_ids or db.get(models.Widget, wid):
+                wd.pop("id", None)
+            else:
+                widget_ids.add(wid)
             wd["dashboard_id"] = dash.id
             if wd.get("service_id") and not db.get(models.Service, wd["service_id"]):
                 wd["service_id"] = None

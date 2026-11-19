@@ -59,6 +59,12 @@ const MAGNET_PX = 8; // attraction range
 const MAGNET_TOL_PX = 2; // max residual misalignment after rounding to grid units
 const GRID_BIAS_PX = 2; // grid lines beat widget edges unless the edge is clearly closer
 
+// Every widget resizes from any side or corner; a line only along its length, from either end.
+const ALL_HANDLES = ["se", "e", "s", "sw", "w", "nw", "n", "ne"];
+const LINE_HANDLES = { h: ["w", "e"], v: ["n", "s"] };
+/** Which handle ("e", "nw", …) a resize callback's handle element is. */
+const handleOf = (node) => node?.className?.match?.(/react-resizable-handle-(\w+)/)?.[1] || "se";
+
 /** Best snap on one axis. All points are in grid units; `scale` is px per unit.
  *  `gridStep` (sub-cells per cell) adds the grid lines themselves as targets;
  *  they take priority over widget edges on anything close to a tie.
@@ -123,14 +129,13 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
     return () => ro.disconnect();
   }, [narrow, editMode]); // the stacked and grid views render different root elements
 
-  // Line-like decorations ("h" / "v") are edited as the line itself: see `hug` in decorations.jsx.
-  const hugById = useMemo(() => Object.fromEntries(widgets.map((w) => [w.id, WIDGET_TYPES[w.type]?.hug?.(w) || null])), [widgets]);
-  const [dragHug, setDragHug] = useState(null); // hug axis of the item being dragged/resized
+  // Line decorations ("h" / "v"): see `line` in decorations.jsx.
+  const lineById = useMemo(() => Object.fromEntries(widgets.map((w) => [w.id, WIDGET_TYPES[w.type]?.line?.(w) || null])), [widgets]);
 
   const layout = useMemo(
     () =>
       widgets.map((w) => {
-        const hug = hugById[w.id];
+        const line = lineById[w.id];
         return {
           i: w.id,
           x: Math.round(w.x * K),
@@ -139,13 +144,15 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
           h: Math.max(1, Math.round(w.h * K)),
           minW: 1,
           minH: 1,
-          // A line only has a length: one knob at its far end.
-          ...(hug && { resizeHandles: [hug === "h" ? "e" : "s"] }),
+          resizeHandles: line ? LINE_HANDLES[line] : ALL_HANDLES,
         };
       }),
-    [widgets, K, hugById]
+    [widgets, K, lineById]
   );
 
+  // Only ever called with the item that was dragged/resized. Nothing else can move (no compaction,
+  // overlap allowed), and diffing the whole layout would rewrite every widget whose stored
+  // fractional geometry merely rounds differently in the current snap mode.
   const commit = (next) => {
     const changed = next
       .map((l) => ({ id: l.i, x: l.x / K, y: l.y / K, w: l.w / K, h: l.h / K }))
@@ -164,21 +171,22 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
   };
 
   /** Compute the magnetic snap for item `l` against everything else. */
-  const magnet = (l, lay, mode, e) => {
+  const magnet = (l, lay, handle, e) => {
     if (e?.altKey) return null; // Alt = move freely
     const { xs, ys } = scales();
     const others = lay.filter((o) => o.i !== l.i);
-    // A horizontal line lives on its cell's top edge (a vertical one on its left edge),
-    // so across the line only that edge counts, both as a target and when moving it.
-    const xPts = (o) => (hugById[o.i] === "v" ? [o.x] : [o.x, o.x + o.w, o.x + o.w / 2]);
-    const yPts = (o) => (hugById[o.i] === "h" ? [o.y] : [o.y, o.y + o.h, o.y + o.h / 2]);
+    // Only the stroke of a line is visible, and it runs through the middle of its
+    // cell, so across the line only that middle counts, as a target and when moving it.
+    const xPts = (o) => (lineById[o.i] === "v" ? [o.x + o.w / 2] : [o.x, o.x + o.w, o.x + o.w / 2]);
+    const yPts = (o) => (lineById[o.i] === "h" ? [o.y + o.h / 2] : [o.y, o.y + o.h, o.y + o.h / 2]);
     const xT = others.map(xPts);
     const yT = others.map(yPts);
     xT.push([0, cols * K, (cols * K) / 2]); // page edges + centre line
     yT.push([0]); // top of the page
-    // While resizing (se/e/s handles) only the right/bottom edges move.
-    const ownX = mode === "resize" ? [l.x + l.w] : xPts(l);
-    const ownY = mode === "resize" ? [l.y + l.h] : yPts(l);
+    // While resizing only the edges the handle drags move.
+    const edge = (side, pt) => (handle.includes(side) ? [pt] : []);
+    const ownX = handle === "move" ? xPts(l) : [...edge("w", l.x), ...edge("e", l.x + l.w)];
+    const ownY = handle === "move" ? yPts(l) : [...edge("n", l.y), ...edge("s", l.y + l.h)];
     const sx = snapAxis(ownX, xT, xs, K);
     const sy = snapAxis(ownY, yT, ys, K);
     return sx || sy ? { sx, sy, xs, ys } : null;
@@ -206,24 +214,35 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
     if (m?.sx) l.x = Math.max(0, l.x + m.sx.d);
     if (m?.sy) l.y = Math.max(0, l.y + m.sy.d);
     setGuides(null);
-    setDragHug(null);
-    commit(lay);
+    commit([l]);
   };
 
-  const onResize = (lay, oldItem, l, placeholder, e) => {
-    const m = magnet(l, lay, "resize", e);
-    if (m?.sx) placeholder.w = Math.max(1, l.w + m.sx.d);
-    if (m?.sy) placeholder.h = Math.max(1, l.h + m.sy.d);
+  /** Apply a resize snap to `t`: a left/top edge moves the position and gives the size back. */
+  const snapResize = (t, l, m, handle) => {
+    const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+    if (m?.sx && handle.includes("w")) {
+      t.x = clamp(l.x + m.sx.d, 0, l.x + l.w - 1);
+      t.w = l.x + l.w - t.x;
+    } else if (m?.sx) t.w = Math.max(1, l.w + m.sx.d);
+    if (m?.sy && handle.includes("n")) {
+      t.y = clamp(l.y + m.sy.d, 0, l.y + l.h - 1);
+      t.h = l.y + l.h - t.y;
+    } else if (m?.sy) t.h = Math.max(1, l.h + m.sy.d);
+  };
+
+  const onResize = (lay, oldItem, l, placeholder, e, node) => {
+    const handle = handleOf(node);
+    const m = magnet(l, lay, handle, e);
+    snapResize(placeholder, { ...l }, m, handle);
     showGuides(m);
   };
 
-  const onResizeStop = (lay, oldItem, l, placeholder, e) => {
-    const m = magnet(l, lay, "resize", e);
-    if (m?.sx) l.w = Math.max(1, l.w + m.sx.d);
-    if (m?.sy) l.h = Math.max(1, l.h + m.sy.d);
+  const onResizeStop = (lay, oldItem, l, placeholder, e, node) => {
+    const handle = handleOf(node);
+    const m = magnet(l, lay, handle, e);
+    snapResize(l, { ...l }, m, handle);
     setGuides(null);
-    setDragHug(null);
-    commit(lay);
+    commit([l]);
   };
 
   // Grid-paper background sized to the cells (approximate; cell width depends on container width).
@@ -247,7 +266,7 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
         {editMode && (
           <>
             <div
-              className={`widget-overlay ${hugById[w.id] ? `widget-hit widget-hit-${hugById[w.id]}` : ""}`}
+              className="widget-overlay"
               onMouseDown={() => onSelect?.(w.id)}
               onDoubleClick={() => onEditWidget(w)}
               title="Drag to move · double-click to edit"
@@ -286,7 +305,7 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
   return (
     <div
       ref={canvasRef}
-      className={`canvas ${editMode ? "canvas-edit" : ""} ${dragHug ? `canvas-drag-hug-${dragHug}` : ""}`}
+      className={`canvas ${editMode ? "canvas-edit" : ""}`}
       style={bgStyle}
       onMouseDown={(e) => editMode && !e.target.closest(".widget-cell") && onSelect?.(null)}
     >
@@ -303,10 +322,10 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
         isDraggable={editMode}
         isResizable={editMode}
         isBounded={false}
-        resizeHandles={["se", "e", "s"]}
+        resizeHandles={ALL_HANDLES}
         draggableCancel=".widget-gear"
-        onDragStart={(lay, oldItem, l) => { onSelect?.(l.i); setDragHug(hugById[l.i]); }}
-        onResizeStart={(lay, oldItem, l) => { onSelect?.(l.i); setDragHug(hugById[l.i]); }}
+        onDragStart={(lay, oldItem, l) => onSelect?.(l.i)}
+        onResizeStart={(lay, oldItem, l) => onSelect?.(l.i)}
         onDrag={onDrag}
         onDragStop={onDragStop}
         onResize={onResize}
@@ -319,8 +338,8 @@ export default function Canvas({ dashboard, widgets, services, health, integrati
             "widget-cell",
             def?.decoration ? "widget-cell-deco" : "",
             def?.under ? "widget-cell-under" : "",
+            lineById[w.id] ? `widget-cell-line widget-cell-line-${lineById[w.id]}` : "",
             editMode && w.id === selectedId ? "widget-cell-selected" : "",
-            hugById[w.id] ? `widget-cell-hug widget-cell-hug-${hugById[w.id]}` : "",
           ].join(" ");
           return (
             <div key={w.id} className={cellCls}>

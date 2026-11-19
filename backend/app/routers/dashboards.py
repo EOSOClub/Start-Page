@@ -31,6 +31,19 @@ def create_dashboard(payload: schemas.DashboardCreate, db: Session = Depends(get
     return dash
 
 
+@router.put("/order", response_model=list[schemas.DashboardOut])
+def reorder_dashboards(ids: list[str], db: Session = Depends(get_db)):
+    """Set every listed page's position to its index, in one transaction (all or nothing)."""
+    by_id = {d.id: d for d in db.query(models.Dashboard).all()}
+    missing = [i for i in ids if i not in by_id]
+    if missing:
+        raise HTTPException(404, f"Dashboard not found: {missing}")
+    for position, dashboard_id in enumerate(ids):
+        by_id[dashboard_id].position = position
+    db.commit()
+    return list_dashboards(db)
+
+
 @router.get("/{dashboard_id}", response_model=schemas.DashboardDetail)
 def get_dashboard(dashboard_id: str, db: Session = Depends(get_db)):
     return _get(db, dashboard_id)
@@ -39,7 +52,7 @@ def get_dashboard(dashboard_id: str, db: Session = Depends(get_db)):
 @router.patch("/{dashboard_id}", response_model=schemas.DashboardOut)
 def update_dashboard(dashboard_id: str, payload: schemas.DashboardUpdate, db: Session = Depends(get_db)):
     dash = _get(db, dashboard_id)
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    for k, v in schemas.patch_data(payload).items():
         setattr(dash, k, v)
     db.commit()
     db.refresh(dash)

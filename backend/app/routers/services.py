@@ -64,7 +64,7 @@ def get_service(service_id: str, db: Session = Depends(get_db)):
 @router.patch("/{service_id}", response_model=schemas.ServiceOut)
 def update_service(service_id: str, payload: schemas.ServiceUpdate, db: Session = Depends(get_db)):
     svc = _get(db, service_id)
-    for k, v in _to_model_kwargs(payload.model_dump(exclude_unset=True)).items():
+    for k, v in _to_model_kwargs(schemas.patch_data(payload, nullable=("port",))).items():
         setattr(svc, k, v)
     db.commit()
     db.refresh(svc)

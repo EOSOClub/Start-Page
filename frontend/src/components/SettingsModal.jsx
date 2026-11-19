@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal.jsx";
 import ConfigForm from "./ConfigForm.jsx";
 import { api } from "../api.js";
@@ -40,8 +40,14 @@ export default function SettingsModal({ settings, onSave, onRestored, onClose })
   const [backups, setBackups] = useState([]);
   const [msg, setMsg] = useState("");
 
-  // Keep the form in sync when the settings change under it (e.g. after a backup restore reloads everything).
-  useEffect(() => setValue(settings), [settings]);
+  // Re-seed the form only after a backup restore. Any other refetch (tab refocus, an outside edit)
+  // also hands us a new `settings` object and must not wipe what the user is typing.
+  const resync = useRef(false);
+  useEffect(() => {
+    if (!resync.current) return;
+    resync.current = false;
+    setValue(settings);
+  }, [settings]);
 
   const loadBackups = () => api.listBackups().then(setBackups).catch(() => {});
   useEffect(() => {
@@ -53,8 +59,10 @@ export default function SettingsModal({ settings, onSave, onRestored, onClose })
     try {
       await api.restoreBackup(name, true);
       setMsg("Restored.");
+      resync.current = true;
       await onRestored();
     } catch (e) {
+      resync.current = false;
       setMsg(e.message);
     }
   };

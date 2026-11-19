@@ -19,7 +19,7 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
-BASE_URL = os.environ.get("STARTPAGE_URL", "http://localhost:8000").rstrip("/")
+BASE_URL = os.environ.get("STARTPAGE_URL", "http://127.0.0.1:8471").rstrip("/")
 HEADERS = {"X-Requested-By": "claude"}
 CATALOG_PATH = Path(__file__).with_name("widget_catalog.json")
 MAX_ROWS = 200  # same search depth as the app's findFreeSpot
@@ -211,9 +211,11 @@ def update_widget(
     page_id: Optional[str] = None,
 ) -> dict:
     """Change a widget. `config` is merged into the current config (a null value removes
-    that key). `page_id` moves the widget to another page."""
+    that key). `page_id` moves the widget to another page. `service_id=""` unlinks the service."""
     _, current = _find_widget(widget_id)
-    body: dict[str, Any] = {k: v for k, v in {"x": x, "y": y, "w": w, "h": h, "service_id": service_id}.items() if v is not None}
+    body: dict[str, Any] = {k: v for k, v in {"x": x, "y": y, "w": w, "h": h}.items() if v is not None}
+    if service_id is not None:
+        body["service_id"] = service_id or None
     if config is not None:
         body["config"] = _merge(current.get("config") or {}, config)
     if page_id is not None:
@@ -226,6 +228,11 @@ def update_widget(
 @mcp.tool()
 def set_layout(page_id: str, items: list[dict[str, float | str]]) -> str:
     """Move/resize several widgets at once: items = [{id, x, y, w, h}, ...]."""
+    # The API skips ids that aren't on this page, so check them first rather than report a no-op as saved.
+    on_page = {w["id"] for w in _call("GET", f"/dashboards/{page_id}")["widgets"]}
+    missing = [i.get("id") for i in items if i.get("id") not in on_page]
+    if missing:
+        raise ToolError(f"Not on page {page_id!r}: {missing}. Nothing was changed; see get_page for the widget ids.")
     _call("PUT", f"/dashboards/{page_id}/layout", items)
     return f"Saved layout for {len(items)} widget(s)"
 
@@ -280,6 +287,12 @@ def delete_page(page_id: str) -> str:
 
 
 # ---------- services ----------
+SERVICE_FIELDS = {
+    "name", "protocol", "host", "port", "path", "icon", "color", "category", "description",
+    "health_enabled", "health_type", "health_url", "health_interval", "depends_on", "metadata",
+}
+
+
 @mcp.tool()
 def list_services() -> list[dict]:
     """The service registry (hosts that service widgets point at and health checks watch)."""
@@ -309,6 +322,9 @@ def create_service(
 def update_service(service_id: str, changes: dict[str, Any]) -> dict:
     """Update service fields (name, protocol, host, port, path, icon, color, category,
     description, health_enabled, health_type, health_url, health_interval, depends_on)."""
+    unknown = sorted(set(changes) - SERVICE_FIELDS)  # the API would silently ignore these
+    if unknown:
+        raise ToolError(f"Unknown service field(s) {unknown}. Valid: {', '.join(sorted(SERVICE_FIELDS))}")
     return _call("PATCH", f"/services/{service_id}", changes)
 
 

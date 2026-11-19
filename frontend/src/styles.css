@@ -101,7 +101,8 @@ button:hover { border-color: var(--accent); }
 .banner { padding: 8px 14px; cursor: pointer; background: var(--bg-elev); border-bottom: 1px solid var(--border); }
 
 /* ---------- canvas ---------- */
-.canvas { flex: 1; position: relative; min-height: calc(100vh - 50px); }
+/* overflow-x: clip — a line's end knob may poke past the page edge; never scroll for it. */
+.canvas { flex: 1; position: relative; min-height: calc(100vh - 50px); overflow-x: clip; }
 .canvas-edit {
   background-image:
     linear-gradient(to right, var(--border) 1px, transparent 1px),
@@ -148,12 +149,23 @@ button:hover { border-color: var(--accent); }
 .snap-guide { position: absolute; z-index: 15; pointer-events: none; }
 .snap-guide-v { top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--accent); }
 .snap-guide-h { left: 0; right: 0; height: 0; border-top: 1px dashed var(--accent); }
-.react-resizable-handle { z-index: 4; opacity: .5; }
+/* Resize handles on every side and corner; shown on hover and for the selected widget. */
+.react-resizable-handle { z-index: 4; opacity: 0; transition: opacity .15s; }
+.widget-cell:hover > .react-resizable-handle, .widget-cell-selected > .react-resizable-handle { opacity: .6; }
 .react-resizable-handle::after { border-color: var(--muted) !important; }
-/* Pull the resize handles inside the visible widget, not the outer cell. */
-.widget-cell > .react-resizable-handle-se { right: calc(var(--widget-gap) / 2); bottom: calc(var(--widget-gap) / 2); }
-.widget-cell > .react-resizable-handle-e { right: calc(var(--widget-gap) / 2); }
-.widget-cell > .react-resizable-handle-s { bottom: calc(var(--widget-gap) / 2); }
+/* Pull the handles inside the visible widget, not the outer cell. */
+.canvas .widget-cell > .react-resizable-handle-se,
+.canvas .widget-cell > .react-resizable-handle-ne,
+.canvas .widget-cell > .react-resizable-handle-e { right: calc(var(--widget-gap) / 2); }
+.canvas .widget-cell > .react-resizable-handle-sw,
+.canvas .widget-cell > .react-resizable-handle-nw,
+.canvas .widget-cell > .react-resizable-handle-w { left: calc(var(--widget-gap) / 2); }
+.canvas .widget-cell > .react-resizable-handle-se,
+.canvas .widget-cell > .react-resizable-handle-sw,
+.canvas .widget-cell > .react-resizable-handle-s { bottom: calc(var(--widget-gap) / 2); }
+.canvas .widget-cell > .react-resizable-handle-ne,
+.canvas .widget-cell > .react-resizable-handle-nw,
+.canvas .widget-cell > .react-resizable-handle-n { top: calc(var(--widget-gap) / 2); }
 
 /* ---------- decorations (divider / heading / box) ---------- */
 /* Bare widgets: no card chrome — only the decoration itself is visible. */
@@ -163,16 +175,35 @@ button:hover { border-color: var(--accent); }
 .app-edit .widget-bare { background: color-mix(in srgb, var(--bg-widget) 30%, transparent); }
 
 /* Flush widgets ignore the gap inset and don't clip: their content spans the
- * exact cell rect, so a divider's stroke lies on the grid line its cell edge
- * snaps to and runs edge-to-edge, joining seamlessly with neighbouring lines. */
+ * exact cell rect, so a divider's stroke runs edge-to-edge and joins
+ * seamlessly with neighbouring lines. */
 .widget-flush { inset: 0; overflow: visible; }
 .widget-flush .widget-body { overflow: visible; }
 
-/* The line assembly (stroke, caps, label) is centred ON the cell's top/left edge. */
+/* The line assembly (stroke, caps, label) runs through the middle of the widget. */
 .divider { display: flex; align-items: center; position: absolute; }
-.divider-h { left: 0; right: 0; top: 0; transform: translateY(-50%); }
-.divider-v { top: 0; bottom: 0; left: 0; transform: translateX(-50%); flex-direction: column; }
+.divider-h { left: 0; right: 0; top: 50%; transform: translateY(-50%); }
+.divider-v { top: 0; bottom: 0; left: 50%; transform: translateX(-50%); flex-direction: column; }
 .line-seg { flex: 1; }
+/* A line is never shown in a box, not even in edit mode: its cell is click-through
+ * except for a thin grab strip along the stroke, a knob at each end and the gear. */
+.widget-cell-line { pointer-events: none; }
+.app-edit .widget-cell-line .widget,
+.app-edit .widget-cell-line .widget.widget-selected { background: transparent; border-color: transparent; box-shadow: none; }
+.widget-cell-line .widget-overlay, .widget-cell-line .widget-gear, .widget-cell-line > .react-resizable-handle { pointer-events: auto; }
+.widget-cell-line .widget-overlay { border-radius: 8px; transition: background .15s; }
+.widget-cell-line-h .widget-overlay { inset: 50% 0 auto; height: 16px; transform: translateY(-50%); }
+.widget-cell-line-v .widget-overlay { inset: 0 auto 0 50%; width: 16px; transform: translateX(-50%); }
+.widget-cell-line:hover .widget-overlay { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.widget-cell-line .widget-selected .widget-overlay { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 1px var(--accent); }
+.widget-cell-line-h .widget-gear { top: 50%; transform: translateY(calc(-100% - 10px)); }
+.widget-cell-line-v .widget-gear { right: auto; left: calc(50% + 10px); }
+/* The end knobs sit on the line's ends. */
+.canvas .widget-cell-line > .react-resizable-handle-w { left: -10px; }
+.canvas .widget-cell-line > .react-resizable-handle-e { right: -10px; }
+.canvas .widget-cell-line > .react-resizable-handle-n { top: -10px; }
+.canvas .widget-cell-line > .react-resizable-handle-s { bottom: -10px; }
+
 .divider-h .line-seg { border-top: var(--line-size) var(--line-style) var(--line-color); }
 .divider-v .line-seg { border-left: var(--line-size) var(--line-style) var(--line-color); }
 .divider-label {
@@ -318,9 +349,15 @@ a.tile:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .iframe-widget .group-title { padding: 8px 12px 0; }
 .iframe-widget iframe { flex: 1; border: none; width: 100%; }
 .image-widget { width: 100%; height: 100%; display: block; }
-.clock { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.clock-time { font-size: clamp(18px, 30cqmin, 96px); font-weight: 300; letter-spacing: .02em; line-height: 1.1; }
-.clock .tile-sub { font-size: clamp(11px, 8cqmin, 18px); }
+/* FitText (widgets/FitText.jsx): the inner block is laid out on unwrapped lines and
+ * given the largest font size that fits the box, so everything inside is sized in em. */
+.fit { height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.fit-inner { flex: none; white-space: nowrap; }
+
+.clock { padding: 4px 8px; }
+.clock .fit-inner { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.clock-time { font-weight: 300; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.clock .tile-sub { font-size: .3em; overflow: visible; }
 
 /* ---------- modal ---------- */
 .modal-backdrop {
@@ -434,6 +471,14 @@ kbd { font: 11px ui-monospace, Consolas, monospace; background: var(--bg); borde
 .search-box input::-webkit-search-cancel-button { display: none; }
 .search-glyph { color: var(--muted); flex-shrink: 0; }
 .search-kbd { opacity: .7; }
+.search-engine-btn {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  margin-left: -6px; padding: 4px 6px; border: none; border-radius: 999px;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.search-engine-btn:hover, .search-engine-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--text) 10%, transparent); }
+.search-engine-menu { min-width: 200px; }
+.search-engine-menu .palette-item { cursor: pointer; }
 .search-suggest {
   position: fixed; z-index: 90; max-height: 60vh; overflow: auto; padding: 6px;
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px;
@@ -443,13 +488,15 @@ kbd { font: 11px ui-monospace, Consolas, monospace; background: var(--bg); borde
 .search-suggest-glyph { width: 20px; height: 20px; font-size: 16px; }
 
 /* ---------- greeting ---------- */
-.greeting { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: .15em; padding: 0 14px; line-height: 1.1; }
-.greeting-center { align-items: center; text-align: center; }
-.greeting-left { align-items: flex-start; }
-.greeting-time { font-size: clamp(22px, min(34cqh, 16cqw), 110px); font-weight: 300; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
-.greeting-text { font-size: clamp(15px, min(14cqh, 7cqw), 42px); font-weight: 600; }
-.greeting-date { font-size: clamp(11px, min(9cqh, 4.5cqw), 20px); color: var(--muted); }
-.greeting-time + .greeting-text { margin-top: .1em; }
+/* Sized in em of the fitted base font; the time, when shown, is the largest line. */
+.greeting { padding: 4px 14px; }
+.greeting .fit-inner { display: flex; flex-direction: column; gap: .08em; line-height: 1.15; }
+.greeting-center .fit-inner { align-items: center; text-align: center; }
+.greeting-left { justify-content: flex-start; }
+.greeting-left .fit-inner { align-items: flex-start; }
+.greeting-time { font-size: 2.4em; font-weight: 300; letter-spacing: .01em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.greeting-text { font-weight: 600; }
+.greeting-date { font-size: .62em; color: var(--muted); }
 
 /* ---------- bookmarks ---------- */
 .bm-item { min-width: 0; }
@@ -464,17 +511,18 @@ kbd { font: 11px ui-monospace, Consolas, monospace; background: var(--bg); borde
 .bm-icons .bm-icon { width: 26px; height: 26px; font-size: 21px; }
 
 /* ---------- weather ---------- */
-.weather { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 14px; }
-.weather-now { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.weather-emoji { font-size: clamp(28px, 22cqmin, 64px); line-height: 1; }
-.weather-temp { font-size: clamp(22px, 18cqmin, 52px); font-weight: 300; line-height: 1; }
-.weather-desc { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.weather-meta { margin-left: auto; text-align: right; min-width: 0; font-size: 12px; }
-.weather-meta > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.weather-loc { font-weight: 600; font-size: 13px; }
-.weather-days { display: flex; gap: 6px; border-top: 1px solid var(--border); padding-top: 8px; }
-.weather-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; min-width: 0; white-space: nowrap; }
-.weather-day-emoji { font-size: 18px; }
+/* 1em = the small text; the fitted base font scales the whole card together. */
+.weather { padding: 8px 12px; }
+.weather .fit-inner { display: flex; flex-direction: column; gap: .8em; line-height: 1.25; }
+.weather-now { display: flex; align-items: center; gap: 1em; }
+.weather-emoji { font-size: 3.4em; line-height: 1; }
+.weather-temp { font-size: 2.8em; font-weight: 300; line-height: 1; }
+.weather-desc { color: var(--muted); }
+.weather-meta { margin-left: auto; padding-left: .6em; text-align: right; }
+.weather-loc { font-weight: 600; font-size: 1.08em; }
+.weather-days { display: flex; gap: .6em; border-top: 1px solid var(--border); padding-top: .65em; }
+.weather-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .15em; }
+.weather-day-emoji { font-size: 1.5em; line-height: 1.1; }
 @container (max-height: 120px) { .weather-days { display: none; } }
 @container (max-width: 260px) { .weather-meta { display: none; } }
 

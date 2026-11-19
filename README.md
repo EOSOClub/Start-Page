@@ -42,7 +42,7 @@ services, pages and widgets are all managed from the UI and stored in SQLite.
 ## Run (development)
 
 ```powershell
-cd backend;  pip install -r requirements.txt;  python -m uvicorn app.main:app --reload --port 8000
+cd backend;  pip install -r requirements.txt;  python -m uvicorn app.main:app --reload --port 8471
 cd frontend; npm install;                      npm run dev      # http://localhost:5173 (proxies /api)
 ```
 or just `.\dev.ps1` to open both.
@@ -51,14 +51,14 @@ or just `.\dev.ps1` to open both.
 
 ```powershell
 cd frontend; npm run build        # emits to backend/static
-cd ../backend; python -m uvicorn app.main:app --port 8000
+cd ../backend; python -m uvicorn app.main:app --port 8471
 ```
-Open http://localhost:8000 — the backend serves the built frontend.
+Open http://localhost:8471 — the backend serves the built frontend.
 
 ## Run (Docker)
 
 ```bash
-docker compose up -d --build      # http://localhost:8000, data persisted in ./data
+docker compose up -d --build      # http://localhost:8471, data persisted in ./data
 ```
 
 ## Usage
@@ -83,7 +83,7 @@ Jellyfin and Home Assistant services"*.
 - The repo's `.mcp.json` registers the `startpage` MCP server (`mcp/startpage_mcp.py`). Approve it
   when Claude Code asks on first launch.
 - The server needs [uv](https://docs.astral.sh/uv/), which installs its dependencies on first run.
-- It talks to `http://localhost:8000` (change `STARTPAGE_URL` in `.mcp.json` for another host).
+- It talks to `http://localhost:8471` (change `STARTPAGE_URL` in `.mcp.json` for another host).
   In development that's the backend started by `dev.ps1`.
 - Claude can read pages, add, configure, move and delete widgets, manage pages, services and
   global settings, and take backups.
@@ -127,6 +127,7 @@ Interactive docs at `/docs`. Key routes:
 |---|---|
 | `GET/POST /api/dashboards`, `PATCH/DELETE /api/dashboards/{id}` | pages |
 | `PUT /api/dashboards/{id}/layout` | bulk save positions after drag/resize |
+| `PUT /api/dashboards/order` | reorder pages: a list of page ids, saved all-or-nothing |
 | `POST /api/dashboards/{id}/widgets`, `PATCH/DELETE /api/widgets/{id}`, `POST /api/widgets/{id}/duplicate` | widgets |
 | `GET/POST /api/services`, `PATCH/DELETE /api/services/{id}` | service registry |
 | `GET /api/health`, `POST /api/health/{id}/check` | cached status / force check |

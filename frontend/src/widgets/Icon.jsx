@@ -11,7 +11,8 @@ import { useApp } from "../context.js";
 //  - "plex"          -> dashboard-icons name (https://github.com/walkxcode/dashboard-icons)
 const DASHBOARD_ICONS = "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/";
 
-const isEmoji = (s) => /\p{Extended_Pictographic}/u.test(s) && s.length <= 4;
+// Whole-string match, no length cap: ZWJ sequences, skin tones, flags and keycaps are many code units long.
+const isEmoji = (s) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|‍|️|[\d#*]️?⃣)+$/u.test(s);
 
 function resolveSrc(icon, url, autoFavicons) {
   if (!icon) return url && autoFavicons ? api.faviconUrl(url) : null;

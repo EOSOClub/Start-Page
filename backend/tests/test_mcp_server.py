@@ -85,3 +85,27 @@ def test_unreachable_app_explains_how_to_start(monkeypatch):
 def test_find_free_spot_skips_taken_cells():
     taken = [{"x": 0, "y": 0, "w": 24, "h": 2}, {"x": 0, "y": 2, "w": 10, "h": 3}]
     assert server.find_free_spot(taken, 4, 2, 24) == {"x": 10, "y": 2}
+
+
+# ---------- 2026-11-18 bug run ----------
+def test_set_layout_refuses_ids_that_are_not_on_the_page(sp, page):
+    w = sp.add_widget(page["id"], "clock")["widget"]
+    with pytest.raises(ToolError, match="Not on page"):
+        sp.set_layout(page["id"], [{"id": w["id"], "x": 9, "y": 9, "w": 2, "h": 2}, {"id": "typo", "x": 0, "y": 0, "w": 1, "h": 1}])
+    assert sp.get_page(page["id"])["widgets"][0]["x"] == w["x"]  # nothing moved
+    assert "1 widget" in sp.set_layout(page["id"], [{"id": w["id"], "x": 9, "y": 9, "w": 2, "h": 2}])
+    assert sp.get_page(page["id"])["widgets"][0]["x"] == 9
+
+
+def test_update_service_rejects_unknown_fields(sp):
+    svc = sp.create_service("Jellyfin", "192.168.1.20", port=8096)
+    with pytest.raises(ToolError, match="url"):
+        sp.update_service(svc["id"], {"url": "http://x:8080"})
+    assert sp.update_service(svc["id"], {"port": 9000})["port"] == 9000
+
+
+def test_update_widget_can_unlink_its_service(sp, page):
+    svc = sp.create_service("Jellyfin", "192.168.1.20")
+    w = sp.add_widget(page["id"], "service", service_id=svc["id"])["widget"]
+    assert w["service_id"] == svc["id"]
+    assert sp.update_widget(w["id"], service_id="")["service_id"] is None

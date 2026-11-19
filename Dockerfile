@@ -16,5 +16,5 @@ COPY backend/ ./
 COPY --from=web /app/backend/static ./static
 ENV STARTPAGE_DATA_DIR=/data
 VOLUME ["/data"]
-EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8471
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8471"]

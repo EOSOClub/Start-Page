@@ -31,7 +31,7 @@ async def _names() -> list[str]:
 
 
 @router.get("")
-async def search_icons(q: str = Query(""), limit: int = Query(60, le=500)):
+async def search_icons(q: str = Query(""), limit: int = Query(60, ge=1, le=500)):
     names = await _names()
     q = q.lower().strip()
     if q:

@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import FitText from "./FitText.jsx";
 import Icon from "./Icon.jsx";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
@@ -58,6 +59,85 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
       <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  );
+}
+
+/** The search box's leading icon when `engineSwitcher` is on: the provider's favicon, and a menu to switch provider. */
+function EngineSwitcher({ widget, template, engineName }) {
+  const c = widget.config;
+  const { settings, updateWidgetConfig } = useApp();
+  const [menu, setMenu] = useState(null); // {left, top} while open
+  const btnRef = useRef();
+  const menuRef = useRef();
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e) => {
+      if (e.type === "keydown" ? e.key === "Escape" : !menuRef.current?.contains(e.target) && !btnRef.current?.contains(e.target)) setMenu(null);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+      window.removeEventListener("resize", close);
+    };
+  }, [menu]);
+
+  const defaultUrl = settings?.search_url || SEARCH_ENGINES.duckduckgo.url;
+  const options = [
+    { value: "", label: "Default", url: defaultUrl },
+    ...Object.entries(SEARCH_ENGINES).map(([value, e]) => ({ value, label: e.label, url: e.url })),
+    ...(c.customUrl ? [{ value: "custom", label: hostOf(c.customUrl.replace("{q}", "")), url: c.customUrl }] : []),
+  ];
+  const current = c.engine === "custom" && !c.customUrl ? "" : c.engine || "";
+  const urlFor = (t) => (t || defaultUrl).replace("{q}", "");
+
+  const pick = (value) => {
+    setMenu(null);
+    if (value !== current) updateWidgetConfig?.(widget.id, { ...c, engine: value });
+  };
+  const toggle = (e) => {
+    e.stopPropagation();
+    if (menu) return setMenu(null);
+    const r = btnRef.current.getBoundingClientRect();
+    setMenu({ left: r.left, top: r.bottom + 6 });
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className="search-engine-btn"
+        title={`Searching ${engineName || "the web"} — click to switch`}
+        aria-haspopup="menu"
+        aria-expanded={!!menu}
+        onClick={toggle}
+      >
+        <Icon url={urlFor(template)} fallback={engineName} size={18} />
+        <svg viewBox="0 0 10 6" width="8" height="5" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+      {menu &&
+        createPortal(
+          <div ref={menuRef} className="search-suggest search-engine-menu" style={menu} role="menu">
+            {options.map((o) => (
+              <div key={o.value || "default"} role="menuitemradio" aria-checked={o.value === current} className={`palette-item ${o.value === current ? "active" : ""}`} onClick={() => pick(o.value)}>
+                <Icon url={urlFor(o.url)} fallback={o.label} size={18} />
+                <div className="palette-text">
+                  {o.label}
+                  {o.value === "" && <span className="muted"> · {hostOf(urlFor(o.url))}</span>}
+                </div>
+                {o.value === current && <span className="muted">✓</span>}
+              </div>
+            ))}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 
@@ -149,7 +229,7 @@ function SearchRender({ widget }) {
   return (
     <div className="search-widget">
       <div ref={boxRef} className={`search-box ${focused ? "focused" : ""}`} onClick={() => inputRef.current?.focus()}>
-        <SearchIcon />
+        {c.engineSwitcher ? <EngineSwitcher widget={widget} template={template} engineName={engineName} /> : <SearchIcon />}
         <input
           ref={inputRef}
           type="search"
@@ -184,6 +264,7 @@ export const SearchWidget = {
       ],
     },
     { key: "customUrl", label: "Custom search URL", type: "text", placeholder: "https://example.com/search?q={q}", showIf: (c) => c.engine === "custom" },
+    { key: "engineSwitcher", label: "Show the search engine's icon with a quick switcher", type: "checkbox" },
     { key: "placeholder", label: "Placeholder", type: "text", placeholder: "Search … or type a URL" },
     { key: "suggestions", label: "Suggest matching links, services and pages", type: "checkbox", default: true },
     { key: "autofocus", label: "Focus when the page opens", type: "checkbox", help: "Works when this page is your homepage. On a new tab most browsers keep focus in the address bar — press / to jump here." },
@@ -219,7 +300,7 @@ export const GreetingWidget = {
     const c = widget.config;
     const now = useNow();
     return (
-      <div className={`greeting greeting-${c.align || "center"}`}>
+      <FitText className={`greeting greeting-${c.align || "center"}`} min={10}>
         {c.showTime !== false && (
           <div className="greeting-time">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: !c.h24 })}</div>
         )}
@@ -230,7 +311,7 @@ export const GreetingWidget = {
         {c.showDate !== false && (
           <div className="greeting-date">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</div>
         )}
-      </div>
+      </FitText>
     );
   },
 };
@@ -268,11 +349,11 @@ export const BookmarksWidget = {
         {c.title && <div className="group-title">{c.title}</div>}
         {links.length === 0 && <div className="muted">No links yet. Add some in the widget settings.</div>}
         <div className="group-grid bm-grid" style={style}>
-          {links.map((l) => {
+          {links.map((l, i) => {
             const name = l.name || hostOf(l.url);
             return (
               <a
-                key={l.id}
+                key={l.id || i}
                 className="group-item bm-item"
                 href={normalizeUrl(l.url)}
                 target={newTab ? "_blank" : "_self"}
@@ -379,7 +460,7 @@ function WeatherRender({ widget }) {
   const now = wmo(cur.code, cur.is_day);
   const wind = units === "imperial" ? "mph" : "km/h";
   return (
-    <div className="weather" title={error ? `Showing cached data: ${error}` : undefined}>
+    <FitText className="weather" min={9} max={26} title={error ? `Showing cached data: ${error}` : undefined}>
       <div className="weather-now">
         <span className="weather-emoji">{now.emoji}</span>
         <div className="weather-main">
@@ -411,7 +492,7 @@ function WeatherRender({ widget }) {
           })}
         </div>
       )}
-    </div>
+    </FitText>
   );
 }
 

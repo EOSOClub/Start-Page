@@ -4,6 +4,7 @@ import Icon from "./Icon.jsx";
 import ErrorBoundary from "../components/ErrorBoundary.jsx";
 import { DockerWidget, RssWidget, StatusWidget, SystemWidget, TopologyWidget, UptimeKumaWidget } from "./integrations.jsx";
 import { BoxWidget, DividerWidget, HeadingWidget } from "./decorations.jsx";
+import FitText from "./FitText.jsx";
 import { BookmarksWidget, GreetingWidget, NotesWidget, SearchWidget, TRANSPARENT_FIELD, WeatherWidget, useNow } from "./startpage.jsx";
 
 /*
@@ -304,7 +305,7 @@ const ClockWidget = {
     const opts = { hour: "2-digit", minute: "2-digit", hour12: !c.h24 };
     if (c.showSeconds) opts.second = "2-digit";
     return (
-      <div className="clock">
+      <FitText className="clock" min={10}>
         {c.label && <div className="tile-sub">{c.label}</div>}
         <div className="clock-time">
           {now.toLocaleTimeString([], { ...opts, timeZone: tz })}
@@ -314,7 +315,7 @@ const ClockWidget = {
             {now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", timeZone: tz })}
           </div>
         )}
-      </div>
+      </FitText>
     );
   },
 };

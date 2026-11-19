@@ -48,6 +48,12 @@ export default function LinksEditor({ value, onChange }) {
   const latest = useRef({ value, onChange });
   latest.current = { value, onChange };
 
+  // Links made outside this editor (the MCP server, a hand-written import) may have no id, and
+  // rows are addressed by id: without one, editing or removing a row would hit all of them.
+  useEffect(() => {
+    if (value.some((l) => !l.id)) onChange(value.map((l) => (l.id ? l : { ...l, id: newId() })));
+  }, [value]); // eslint-disable-line
+
   const update = (id, patch) => onChange(value.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const move = (i, d) => {
     const next = [...value];

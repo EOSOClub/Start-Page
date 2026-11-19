@@ -195,8 +195,8 @@ export const StatusWidget = {
         </div>
         <div className="kv">
           {lines.length === 0 && <pre className="muted">{fmt(d).slice(0, 400)}</pre>}
-          {lines.map((f) => (
-            <div key={f.label}><span className="muted">{f.label}</span><b>{fmt(getPath(d, f.path))}</b></div>
+          {lines.map((f, i) => (
+            <div key={i}><span className="muted">{f.label}</span><b>{fmt(getPath(d, f.path))}</b></div>
           ))}
         </div>
       </div>
@@ -267,7 +267,7 @@ export const RssWidget = {
         <div className="scroll">
           {entries.length === 0 && <div className="muted">No items yet.</div>}
           {entries.map((e, i) => (
-            <div key={e.link || i}>
+            <div key={i}>
               <div className="kuma-row">
                 {RSS_LINK.test(e.link || "") ? (
                   <a className="kuma-name" href={e.link} target={c.newTab ? "_blank" : "_self"} rel="noreferrer" draggable={false}>

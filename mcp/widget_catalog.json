@@ -209,6 +209,12 @@
         "conditional": true
       },
       {
+        "key": "engineSwitcher",
+        "label": "Show the search engine's icon with a quick switcher",
+        "type": "checkbox",
+        "value": "boolean"
+      },
+      {
         "key": "placeholder",
         "label": "Placeholder",
         "type": "text",

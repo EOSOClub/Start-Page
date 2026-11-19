@@ -22,15 +22,24 @@ export function useHistory() {
     const last = past.current[past.current.length - 1];
     const now = Date.now();
     failed.current = null;
+    let stored = last;
     if (entry.mergeKey && last?.mergeKey === entry.mergeKey && now - last.at < MERGE_MS) {
       last.redo = entry.redo;
       last.at = now;
     } else {
-      past.current = [...past.current.slice(-(LIMIT - 1)), { ...entry, at: now }];
+      stored = { ...entry, at: now };
+      past.current = [...past.current.slice(-(LIMIT - 1)), stored];
     }
     future.current = [];
     bump();
+    return stored; // the object on the stack, for isTop()
   }, []);
+
+  /** Whether `entry` (as returned by push/undo/redo) is still the next step to undo or redo. */
+  const isTop = useCallback(
+    (entry) => !!entry && (past.current[past.current.length - 1] === entry || future.current[future.current.length - 1] === entry),
+    []
+  );
 
   const step = useCallback(async (from, to, action) => {
     if (busy.current || !from.current.length) return null;
@@ -38,10 +47,12 @@ export function useHistory() {
     const entry = from.current[from.current.length - 1];
     try {
       await entry[action]();
-      from.current = from.current.slice(0, -1);
-      to.current = [...to.current, { ...entry, mergeKey: undefined }];
+      // By identity, not position: a push that landed while the step was in flight is now on top.
+      from.current = from.current.filter((e) => e !== entry);
+      const moved = { ...entry, mergeKey: undefined };
+      to.current = [...to.current, moved];
       failed.current = null;
-      return entry;
+      return moved;
     } catch (e) {
       failed.current = { action, entry };
       throw e;
@@ -78,6 +89,7 @@ export function useHistory() {
 
   return {
     push,
+    isTop,
     clear,
     undo,
     redo,

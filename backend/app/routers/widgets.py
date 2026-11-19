@@ -17,11 +17,13 @@ def _get(db: Session, widget_id: str) -> models.Widget:
 @router.patch("/{widget_id}", response_model=schemas.WidgetOut)
 def update_widget(widget_id: str, payload: schemas.WidgetUpdate, db: Session = Depends(get_db)):
     widget = _get(db, widget_id)
-    data = payload.model_dump(exclude_unset=True)
+    data = schemas.patch_data(payload, nullable=("service_id",))
     if data.get("dashboard_id") and not db.get(models.Dashboard, data["dashboard_id"]):
         raise HTTPException(404, "Dashboard not found")
     if "dashboard_id" in data and not data["dashboard_id"]:
         data.pop("dashboard_id")
+    if "service_id" in data and not data["service_id"]:
+        data["service_id"] = None  # "" unlinks too, instead of failing the foreign key
     for k, v in data.items():
         setattr(widget, k, v)
     db.commit()

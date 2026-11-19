@@ -83,7 +83,6 @@ export default function App() {
   const [renamingId, setRenamingId] = useState(null);
   const [dragTab, setDragTab] = useState(null); // {id, over?, before?}
   const history = useHistory();
-  const addPageDetailRef = useRef(null); // full page detail (widgets included) captured by add-undo for redo to restore
 
   // ----- loading -----
   const loadDashboards = useCallback(async () => {
@@ -95,9 +94,9 @@ export default function App() {
 
   const currentIdRef = useRef(currentId);
   currentIdRef.current = currentId;
-  const loadDashboard = useCallback(async () => {
-    if (!currentId) return;
-    const d = await api.getDashboard(currentId);
+  const loadDashboard = useCallback(async (id = currentId) => {
+    if (!id) return;
+    const d = await api.getDashboard(id);
     // Ignore a late response for a page the user already switched away from.
     if (currentIdRef.current === d.id) {
       setDashboard(d);
@@ -119,14 +118,22 @@ export default function App() {
 
   const loadSettings = useCallback(async () => setSettings(await api.getSettings()), []);
 
+  // The page list first, then the current page only if it still exists: after an undo, import or
+  // restore removed it, loadDashboards has already switched pages and a fetch of the old id would 404.
+  const reloadPages = useCallback(async () => {
+    const list = await loadDashboards();
+    const id = currentIdRef.current;
+    if (list.some((d) => d.id === id)) await loadDashboard(id);
+  }, [loadDashboards, loadDashboard]);
+
   const reloadAll = useCallback(async () => {
-    await Promise.all([loadDashboards(), loadServices(), loadIntegrations(), loadSettings(), loadDashboard()]);
-  }, [loadDashboards, loadServices, loadIntegrations, loadSettings, loadDashboard]);
+    await Promise.all([reloadPages(), loadServices(), loadIntegrations(), loadSettings()]);
+  }, [reloadPages, loadServices, loadIntegrations, loadSettings]);
   const reloadRef = useRef(reloadAll);
   reloadRef.current = reloadAll;
   // History entries outlive renders, so they refresh through a ref (always the current page).
   const refreshPagesRef = useRef();
-  refreshPagesRef.current = () => Promise.all([loadDashboards(), loadDashboard()]);
+  refreshPagesRef.current = reloadPages;
   const refreshPages = () => refreshPagesRef.current();
 
   const offlineMessage = (e) =>
@@ -138,7 +145,9 @@ export default function App() {
 
   useEffect(() => {
     if (!currentId) return;
-    localStorage.setItem("sp.dashboard", currentId);
+    try {
+      localStorage.setItem("sp.dashboard", currentId);
+    } catch {} // storage can be blocked; remembering the page is optional
     setSelectedId(null);
     const cached = readCache().pages?.[currentId];
     setDashboard((cur) => (cur?.id === currentId ? cur : cached || null));
@@ -238,8 +247,10 @@ export default function App() {
 
   const page = dashboard ? gridOptions(dashboard) : {};
   const pageBg = page.background_image || settings?.background_image || "";
-  const bgDim = page.background_dim ?? settings?.background_dim ?? 40;
-  const bgBlur = page.background_blur ?? settings?.background_blur ?? 0;
+  // A page's dim/blur belong to its own image. Page settings always stores them (40 / 0 by default),
+  // so without a page image they must not override the global background's values.
+  const bgDim = (page.background_image ? page.background_dim : undefined) ?? settings?.background_dim ?? 40;
+  const bgBlur = (page.background_image ? page.background_blur : undefined) ?? settings?.background_blur ?? 0;
 
   // ----- mutations -----
   const run = async (fn) => {
@@ -251,8 +262,11 @@ export default function App() {
     }
   };
 
-  const doUndo = () => run(async () => { const e = await history.undo(); if (e) setToast({ text: `Undid: ${e.label}`, actionLabel: "Redo", action: doRedo }); });
-  const doRedo = () => run(async () => { const e = await history.redo(); if (e) setToast({ text: `Redid: ${e.label}`, actionLabel: "Undo", action: doUndo }); });
+  /** A toast's Undo/Redo button is about one specific step: only act while that step is still next in line. */
+  const ifNext = (entry, fn) => () =>
+    history.isTop(entry) ? fn() : setToast({ text: "Other changes came after that one. Use Ctrl+Z to step back through them." });
+  const doUndo = () => run(async () => { const e = await history.undo(); if (e) setToast({ text: `Undid: ${e.label}`, actionLabel: "Redo", action: ifNext(e, doRedo) }); });
+  const doRedo = () => run(async () => { const e = await history.redo(); if (e) setToast({ text: `Redid: ${e.label}`, actionLabel: "Undo", action: ifNext(e, doUndo) }); });
   const doSkip = () => { const e = history.skip(); if (e) setToast({ text: `Skipped: ${e.label}` }); };
 
   /** Run a history step on the page it belongs to, so undo never changes a page you can't see. */
@@ -285,7 +299,12 @@ export default function App() {
       applyLayout(items);
       const save = layoutQueue.current.catch(() => {}).then(() => api.saveLayout(dashId, items));
       layoutQueue.current = save;
-      await save;
+      try {
+        await save;
+      } catch (e) {
+        applyLayout(before); // the save failed: don't leave the widget where the server never put it
+        throw e;
+      }
       history.push({
         label,
         mergeKey,
@@ -368,14 +387,14 @@ export default function App() {
       const dashId = currentId;
       const snap = widgetSnapshot(widget);
       await api.deleteWidget(widget.id);
-      history.push({
+      const entry = history.push({
         label: "Delete widget",
         undo: () => onPage(dashId, () => api.createWidget(dashId, snap)),
         redo: () => onPage(dashId, () => api.deleteWidget(snap.id)),
       });
       setModal(null);
       setSelectedId(null);
-      setToast({ text: `${WIDGET_TYPES[widget.type]?.label || "Widget"} deleted`, actionLabel: "Undo", action: doUndo });
+      setToast({ text: `${WIDGET_TYPES[widget.type]?.label || "Widget"} deleted`, actionLabel: "Undo", action: ifNext(entry, doUndo) });
       await loadDashboard();
     });
 
@@ -423,18 +442,19 @@ export default function App() {
       const name = prompt("Dashboard name", "New page");
       if (!name) return;
       const d = await api.createDashboard({ name });
+      let detail = null; // this page's full detail (widgets included), captured by its undo for its redo to restore
       history.push({
         label: "Add page",
         undo: () =>
           onPage(null, async () => {
-            addPageDetailRef.current = await api.getDashboard(d.id);
+            detail = await api.getDashboard(d.id);
             await api.deleteDashboard(d.id);
           }),
         redo: async () => {
-          if (!addPageDetailRef.current) {
+          if (!detail) {
             await api.createDashboard({ id: d.id, name: d.name, position: d.position });
           } else {
-            await api.importConfig({ services: [], integrations: [], settings: {}, dashboards: [addPageDetailRef.current] }, false);
+            await api.importConfig({ services: [], integrations: [], settings: {}, dashboards: [detail] }, false);
           }
           await refreshPages();
           setCurrentId(d.id);
@@ -463,7 +483,12 @@ export default function App() {
     if (!name || name === d.name) return;
     run(async () => {
       setDashboards((list) => list.map((x) => (x.id === d.id ? { ...x, name } : x)));
-      await api.updateDashboard(d.id, { name });
+      try {
+        await api.updateDashboard(d.id, { name });
+      } catch (e) {
+        setDashboards((list) => list.map((x) => (x.id === d.id ? { ...x, name: d.name } : x)));
+        throw e;
+      }
       history.push({
         label: "Rename page",
         undo: () => onPage(null, () => api.updateDashboard(d.id, { name: d.name })),
@@ -473,16 +498,19 @@ export default function App() {
     });
   };
 
-  const applyOrder = async (ids) => {
-    await Promise.all(ids.map((id, position) => api.updateDashboard(id, { position })));
-  };
+  const applyOrder = (ids) => api.reorderDashboards(ids); // one request, all or nothing
 
   const reorderDashboards = (ids) =>
     run(async () => {
       const before = dashboards.map((d) => d.id);
       if (before.join() === ids.join()) return;
       setDashboards((list) => ids.map((id) => list.find((d) => d.id === id)));
-      await applyOrder(ids);
+      try {
+        await applyOrder(ids);
+      } catch (e) {
+        loadDashboards().catch(() => {}); // show the order the server still has
+        throw e;
+      }
       history.push({
         label: "Reorder pages",
         undo: () => onPage(null, () => applyOrder(before)),
@@ -510,7 +538,7 @@ export default function App() {
         await refreshPages();
         setCurrentId(detail.id);
       };
-      history.push({
+      const entry = history.push({
         label: `Delete page "${detail.name}"`,
         undo: restore,
         redo: async () => {
@@ -524,8 +552,14 @@ export default function App() {
       const list = await api.listDashboards();
       setDashboards(list);
       setCurrentId(list.some((d) => d.id === fallbackId) ? fallbackId : list[0]?.id ?? null);
-      setToast({ text: `Page "${detail.name}" deleted`, actionLabel: "Undo", action: doUndo });
+      setToast({ text: `Page "${detail.name}" deleted`, actionLabel: "Undo", action: ifNext(entry, doUndo) });
     });
+
+  /** After an import or backup restore: undo steps captured the old server state, so they are all stale. */
+  const reloadReplaced = async () => {
+    history.clear();
+    await reloadAll();
+  };
 
   const saveSettings = (data) => run(async () => { setSettings(await api.updateSettings(data)); setModal(null); });
 
@@ -537,7 +571,8 @@ export default function App() {
       const key = e.key.toLowerCase();
       if (mod && key === "k") {
         e.preventDefault();
-        setModal((m) => (m?.kind === "palette" ? null : { kind: "palette" }));
+        // Never replace another open dialog (and its unsaved form) with the palette.
+        setModal((m) => (m?.kind === "palette" ? null : m ? m : { kind: "palette" }));
         return;
       }
       if (modal || typing) return;
@@ -581,6 +616,8 @@ export default function App() {
   });
 
   // ----- paste a URL in edit mode to add a Link widget -----
+  const pasteGuard = useRef({});
+  pasteGuard.current = { modal, editMode };
   useEffect(() => {
     const onPaste = async (e) => {
       const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || e.target.isContentEditable;
@@ -590,6 +627,8 @@ export default function App() {
       e.preventDefault();
       const url = normalizeUrl(text);
       const meta = await Promise.race([api.siteMeta(url).catch(() => null), new Promise((r) => setTimeout(() => r(null), 2500))]);
+      // The title lookup took a moment: don't open over a dialog the user opened meanwhile, or after edit mode ended.
+      if (pasteGuard.current.modal || !pasteGuard.current.editMode) return;
       addWidget("link", { url, name: tidyTitle(meta?.title) || hostOf(url) });
     };
     window.addEventListener("paste", onPaste);
@@ -767,9 +806,10 @@ export default function App() {
         </div>
       )}
 
-      {modal?.kind === "widget" && (
+      {/* Stays mounted under the service/integration manager it opened, so its unsaved edits survive. */}
+      {(modal?.kind === "widget" || modal?.back?.kind === "widget") && (
         <WidgetEditor
-          widget={modal.widget}
+          widget={(modal.back ?? modal).widget}
           services={services}
           integrations={integrations}
           dashboards={dashboards}
@@ -777,7 +817,7 @@ export default function App() {
           onDelete={() => deleteWidget(modal.widget)}
           onDuplicate={() => duplicateWidget(modal.widget)}
           onMoveTo={(targetId, copy) => moveWidget(modal.widget, targetId, copy)}
-          onClose={() => setModal(null)}
+          onClose={() => modal.kind === "widget" && setModal(null)} // Escape belongs to the manager on top
           onManageServices={() => setModal({ kind: "services", back: modal })}
           onManageIntegrations={() => setModal({ kind: "integrations", back: modal })}
         />
@@ -792,9 +832,9 @@ export default function App() {
         <DashboardSettings dashboard={dashboard} canDelete={dashboards.length > 1} onSave={saveDashboard} onDelete={deleteDashboard} onClose={() => setModal(null)} />
       )}
       {modal?.kind === "settings" && settings && (
-        <SettingsModal settings={settings} onSave={saveSettings} onRestored={reloadAll} onClose={() => setModal(null)} />
+        <SettingsModal settings={settings} onSave={saveSettings} onRestored={reloadReplaced} onClose={() => setModal(null)} />
       )}
-      {modal?.kind === "io" && <ImportExport onImported={reloadAll} onClose={() => setModal(null)} />}
+      {modal?.kind === "io" && <ImportExport onImported={reloadReplaced} onClose={() => setModal(null)} />}
       {modal?.kind === "palette" && (
         <CommandPalette
           services={services}
@@ -815,8 +855,8 @@ export default function App() {
               ))}
             </tbody>
           </table>
-          <p className="help">In edit mode: click a widget to select it, drag it by its body, resize from the edges/corner, ⚙ or double-click to configure. Drag page tabs to reorder them; double-click a tab to rename it.</p>
-          <p className="help">While dragging or resizing, widgets snap first to grid lines, then to the edges and centres of other widgets (and the page edges/centre) — dashed guide lines show the match. Divider lines sit exactly on grid lines and join end-to-end. Hold <kbd>Alt</kbd> to move freely.</p>
+          <p className="help">In edit mode: click a widget to select it, drag it by its body, resize from any edge or corner (lines from either end), ⚙ or double-click to configure. Drag page tabs to reorder them; double-click a tab to rename it.</p>
+          <p className="help">While dragging or resizing, widgets snap first to grid lines, then to the edges and centres of other widgets (and the page edges/centre) — dashed guide lines show the match. Divider lines run through the middle of their box and join end-to-end. Hold <kbd>Alt</kbd> to move freely.</p>
         </Modal>
       )}
     </div>

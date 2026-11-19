@@ -3,6 +3,12 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+def patch_data(payload: BaseModel, nullable: tuple[str, ...] = ()) -> dict[str, Any]:
+    """Fields a PATCH actually sets. An explicit null only counts for `nullable` fields;
+    anywhere else it would store NULL / JSON null in a column the Out models require."""
+    return {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None or k in nullable}
+
+
 # ---------- Services ----------
 class ServiceBase(BaseModel):
     name: str

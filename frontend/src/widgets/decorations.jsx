@@ -24,14 +24,13 @@ export const DividerWidget = {
   label: "Divider line",
   size: { w: 6, h: 1 },
   decoration: true,
-  // flush: the widget ignores the usual gap inset and the line is drawn on the
-  // cell's top/left edge — i.e. exactly on a grid line — bleeding to the cell
-  // edges so adjacent divider segments join seamlessly.
+  // flush: the widget ignores the usual gap inset, so the line runs the full
+  // cell length and adjacent divider segments join seamlessly. Across its
+  // length the line is centred in the widget, like a rule between two rows.
   flush: true,
-  // hug: in edit mode the widget is only the line — a thin grab strip along it,
-  // one length knob at its end, and snapping by the line — not the empty cell
-  // it sits on the edge of. Returns the line's axis.
-  hug: (widget) => (dividerVertical(widget) ? "v" : "h"),
+  // line: the line's axis. The canvas shows only the stroke (no box, even in
+  // edit mode), and a line only has a length, so it resizes from its two ends.
+  line: (widget) => (dividerVertical(widget) ? "v" : "h"),
   fields: [
     {
       key: "orientation",
